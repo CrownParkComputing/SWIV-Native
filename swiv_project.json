@@ -1,0 +1,65 @@
+{
+  "name": "SWIV",
+  "root": "/home/jon/SWIV-Native",
+  "raw_slave": "/home/jon/SWIV-Amiga/original/whdload/SWIV/SWIV.slave",
+  "slave_out": "re/pipeline/slave.bin",
+  "data_dir": "/home/jon/SWIV-Amiga/original/whdload/SWIV",
+  "overlay_layout": "none",
+  "code_range": "20bd20-219a94",
+  "trace": {
+    "host_cmd": "/home/jon/SWIV-Amiga/build/swiv --dir /home/jon/SWIV-Amiga/original/whdload/SWIV --frames {frames} --fire-from 1000 --fire-period 50",
+    "frames": 2700,
+    "statelog_from": 2500,
+    "statelog_max": 4000000,
+    "out_dir": "re/pipeline",
+    "dumps": [
+      [
+        "0x200000",
+        "0x190000",
+        "fast.bin"
+      ],
+      [
+        "0x0",
+        "0x80000",
+        "chip.bin"
+      ]
+    ]
+  },
+  "disasm": {
+    "image": "re/pipeline/fast.bin",
+    "base": "0x200000",
+    "out_dir": "re/pipeline/disasm",
+    "seed_range": "200000-300000",
+    "base_register": "0x2016DC"
+  },
+  "kernel": {
+    "family": "salescurve",
+    "base": "2016DC",
+    "names": "re/names.txt",
+    "program_image": "re/amprog.bin",
+    "program_base": "20BD20",
+    "park_pc": "21581a"
+  },
+  "stages": {
+    "oracle-trace": {
+      "status": "done",
+      "at": "2026-08-19T17:57:09"
+    },
+    "base-detect": {
+      "status": "done",
+      "at": "2026-08-19T17:56:25"
+    },
+    "dispatch-table": {
+      "status": "done",
+      "at": "2026-08-19T17:56:25"
+    },
+    "objwalk": {
+      "status": "done",
+      "at": "2026-08-19T17:57:09"
+    },
+    "seed-disasm": {
+      "status": "done",
+      "at": "2026-08-19T17:57:23"
+    }
+  }
+}
