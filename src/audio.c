@@ -13,6 +13,7 @@
 static Sound snd[SFX_COUNT]; static int ready;
 /* optional synthesised bank (src/sfx_bank.c) */
 int sfx_bank_count(void) __attribute__((weak)); const SfxDesc *sfx_bank_desc(int i) __attribute__((weak)); int16_t *sfx_bank_render(int i, SwivDisk *d, int *frames_out) __attribute__((weak));
+const char *audio_bank_name(int i);
 static Sound bank_snd[64]; static int bank_n; static int16_t *bank_pcm[64]; static int bank_frames[64];
 typedef struct { float pitch, vol, maxsec; } Tune; static Tune tune[64];
 static void bank_rebuild(int i) {
