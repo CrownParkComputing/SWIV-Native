@@ -6,6 +6,7 @@
 #ifndef PX
 #define PX(v)  ((int32_t)(v) * 65536)
 #endif
+void bh_token_06AA(Obj *o);   /* bh_tokens.c: LAB_06AA weapon token */
 #define XI(o)  ((int16_t)((o)->x >> 16))
 #define YI(o)  ((int16_t)((o)->y >> 16))
 #define ZI(o)  ((int16_t)((o)->z >> 16))
@@ -628,15 +629,15 @@ static void goose_head(Obj *o) {
         if (goose_head_rand_wait(o)) return;
     }
 }
-/* LAB_0863(n): spread n×(live players) LAB_06AA bombs around the goose.  LAB_06AA is a ground
- * bomb script outside this group (gfx $0018); approximated with the burning wreck. */
+/* LAB_0863(n): spread n×(live players) weapon TOKENS (LAB_06AA, bh_tokens.c) around the goose,
+ * evenly spaced in angle from a random start; each token sets its own speed. */
 static void goose_bombs(Obj *o, int n) {
     int cnt = 0;
     if (g.heli.alive) cnt += n;                         /* 11231(A6) = heli record +55 */
     if (g.jeep.alive) cnt += n;                         /* 11411(A6) = jeep record +55 */
     o->w[2] = cnt; if (!cnt) return;
     o->w[4] = 0x100 / cnt; o->angle = (uint8_t)rng();
-    do { spawn(fx_wreck); o->angle += o->w[4]; } while (--o->w[2]);   /* LAB_0866: LAB_06AA approximated */
+    do { spawn(bh_token_06AA); o->angle += o->w[4]; } while (--o->w[2]);   /* LAB_0866 */
 }
 /* LAB_0860: goose hit handler */
 static void goose_hit(Obj *o) {

@@ -24,3 +24,4 @@ enemy-destroyed LAB_041B
 token-pickup LAB_03F3
 homing-bullet LAB_03FE
 game-start LAB_03F8
+weapon-token LAB_0423+6
