@@ -2,7 +2,7 @@
  *
  * Source: re/amprog.asm, the INT6 sound driver at LAB_03AD ($2107DC):
  *   - 4 voice records of 268 bytes at 10786(A6): 0.w D1 arg, 2.w D2 arg, 4.w priority*4
- *     (decremented every VBL), 6.w DMACON channel mask ($8008/$8004/$8002/$8001 = voice
+ *     (decremented every tick), 6.w DMACON channel mask ($8008/$8004/$8002/$8001 = voice
  *     0..3 = AUD3..AUD0), 8.l saved SP, 12.. scratch waveform / coroutine stack.
  *   - A4 = $DFF030 - 16*voice, so 160(A4)=AUDxLC 164(A4)=AUDxLEN 166(A4)=AUDxPER
  *     168(A4)=AUDxVOL, 150(A3)=DMACON.  Voice 0 = AUD3, voice 3 = AUD0.
@@ -10,12 +10,20 @@
  *     (1,2) [AUD2/AUD1 = right] then (0,3) [AUD3/AUD0 = left]; LAB_03BA tries (0,3) first.
  *     In a pair the lower-priority voice is taken if new prio*4 > it (unsigned).
  *     LAB_03BF picks LAB_03BA for x < 160 else LAB_03B5 (stereo by position).
- *   - LAB_03AF = yield one VBL (LAB_03AC/AB/AA = 2/3/4), LAB_03BD = voice end
+ *   - LAB_03AF = yield one tick (LAB_03AC/AB/AA = 2/3/4), LAB_03BD = voice end
  *     (DMA off, vol 0, prio 0), LAB_042D(D0) = wait D0 frames, LAB_0430 = noise
  *     generator (LFSR over the scratch), LAB_0629 = game RNG.
  *
+ * TIME BASE: the driver is NOT a VBL routine.  LAB_03A9 arms CIA-B timer A with
+ * $0D88 = 3464 E-clocks in one-shot mode and LAB_03AD re-arms it at the end of every
+ * interrupt, so the coroutines step at 709379/(3464+latency) = ~202 Hz, about four
+ * ticks per PAL frame.  Measured on the Musashi host (SWIV-Amiga --wav + SWIV_SFXLOG):
+ * 3.98 ticks/frame; the player shot LAB_03E2 (32 ticks) lasts 0.16 s, not 0.64 s.
+ * Everything below that says "frame" means one driver tick of 1/202 s = 109 samples.
+ * Only the jingle task LAB_0426 waits in VBLs (kernel -1426(A6)), converted at jingle().
+ *
  * Each body below is a line-by-line transliteration of the 68000 coroutine; wait()
- * renders one VBL (441 samples) of the voice through the Paula model.  A driver-level
+ * renders one tick (109 samples) of the voice through the Paula model.  A driver-level
  * allocator reproduces the voice stealing (matters for the jingles LAB_0421/0423+6). */
 #include "sfx_bank.h"
 #include "engine/engine.h"           /* rng() = LAB_0629 */
@@ -24,9 +32,10 @@
 #include <string.h>
 
 #define OUT_RATE      22050
-#define FRAME_SAMPLES 441            /* 22050 / 50 */
+#define TICK_HZ       202.3          /* CIA-B TA one-shot 3464 E-clocks + INT6 re-arm latency */
+#define FRAME_SAMPLES 109            /* 22050 / TICK_HZ, one driver tick */
 #define PAULA_CLK     3546895.0
-#define MAX_FRAMES    1800           /* cap for bodies that never end (36 s) */
+#define MAX_FRAMES    2048           /* cap for bodies that never end (~10 s) */
 #define VOICE_GAIN    1              /* 127*64 = 8128 per voice: 4 voices = full scale, like the hardware */
 
 /* ------------------------------------------------------------------ Paula voice */
@@ -45,8 +54,8 @@ static const int8_t ZERO_WORD[2] = { 0, 0 };
 static void dma_on(Voice *v)  { v->dma_pending = 1; }           /* MOVE.W 6(A5),150(A3) */
 static void dma_off(Voice *v) { v->dma = 0; v->dma_pending = 0; }
 
-/* LAB_03AF: one VBL.  All register writes issued since the last wait happen "at once"
- * (they are a few cycles apart on the 68000), then Paula runs for 1/50 s. */
+/* LAB_03AF: one driver tick.  All register writes issued since the last wait happen "at
+ * once" (they are a few cycles apart on the 68000), then Paula runs for 1/202 s. */
 static void wait(Voice *v) {
     if (v->nframes >= MAX_FRAMES) longjmp(v->jb, 1);
     if (v->dma_pending) {            /* DMACON set: latch AUDxLC/LEN, start fetching */
@@ -324,8 +333,9 @@ static void synth_LAB_0416(Bank *b) { start(b, 0, 10000, SIDE_LEFT, body_0418, 0
 static void synth_LAB_041B(Bank *b) { start(b, 0, 100, SIDE_RIGHT, body_041D, 32, 0xc8); start(b, 0, 100, SIDE_LEFT, body_041D, 32, 0xca); }
 static void synth_LAB_041F(Bank *b) { start(b, 0, 20, SIDE_RIGHT, body_0420, 0, 0); }
 /* LAB_0424: a kernel task (LAB_0426) plays a 0-terminated period list, one note every 5
- * frames, each note = prio 120, 64 x 2 frames, body LAB_0429, via the positional starter. */
-static void jingle(Bank *b, const int *notes) { for (int i = 0; notes[i]; i++) start(b, i * 5, 120, SIDE_RIGHT, body_0429, 64, notes[i]); }
+ * VBLs (= 20 driver ticks), each note = prio 120, 64 x 2 ticks, body LAB_0429, via the
+ * positional starter. */
+static void jingle(Bank *b, const int *notes) { for (int i = 0; notes[i]; i++) start(b, (int)(i * 5 * TICK_HZ / 50.0 + 0.5), 120, SIDE_RIGHT, body_0429, 64, notes[i]); }
 static void synth_LAB_0421(Bank *b) { static const int n[] = { 0x1a8, 0x150, 0x10a, 0xd4, 0xa8, 0x85, 0 }; jingle(b, n); }
 static void synth_LAB_0423_6(Bank *b) { static const int n[] = { 0x9f, 0xd4, 0x9f, 0x8d, 0 }; jingle(b, n); }
 

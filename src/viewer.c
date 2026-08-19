@@ -111,8 +111,8 @@ static void decode_cover(void) {
 #include <dirent.h>
 typedef struct { const char *title; const char *dir; const char *ext; } ExtraCat;
 static const ExtraCat EXTRA_CATS[] = { {"Screenshots", "extras/hol/screen", ".png"}, {"Box", "extras/hol/box", ".png"}, {"Disks", "extras/hol/disk", ".png"},
-    {"Scans & adverts", "extras/hol/misc", ".png"}, {"Map", "extras/hol/map", ".png"}, {"Cheats", NULL, NULL} };
-#define N_EXTRA_CATS 6
+    {"Scans & adverts", "extras/hol/misc", ".png"}, {"Cheats", NULL, NULL} };
+#define N_EXTRA_CATS 5
 static char extra_files[256][160]; static int extra_n, extra_cat = 0, extra_idx = 0; static Texture2D extra_tex; static int extra_loaded_idx = -1, extra_loaded_cat = -1;
 static char cheats_text[4096];
 static int cmpstr(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
@@ -120,7 +120,7 @@ static void extras_scan(int cat) {
     extra_n = 0; extra_idx = 0;
     if (!EXTRA_CATS[cat].dir) { FILE *f = fopen("extras/hol/cheats.txt", "r"); if (f) { size_t n = fread(cheats_text, 1, sizeof cheats_text - 1, f); cheats_text[n] = 0; fclose(f); } return; }
     DIR *d = opendir(EXTRA_CATS[cat].dir); if (!d) return; struct dirent *e;
-    while ((e = readdir(d)) && extra_n < 256) { const char *n = e->d_name; size_t l = strlen(n); if (l > 4 && !strcasecmp(n + l - 4, EXTRA_CATS[cat].ext)) snprintf(extra_files[extra_n++], 160, "%s/%s", EXTRA_CATS[cat].dir, n); }
+    while ((e = readdir(d)) && extra_n < 256) { const char *n = e->d_name; size_t l = strlen(n); if (cat == 2 && !strstr(n, "disk1")) continue; if (l > 4 && !strcasecmp(n + l - 4, EXTRA_CATS[cat].ext)) snprintf(extra_files[extra_n++], 160, "%s/%s", EXTRA_CATS[cat].dir, n); }
     closedir(d); qsort(extra_files, extra_n, 160, cmpstr);
     /* natural order for numbered names: sort by the number before the extension */
     for (int i = 1; i < extra_n; i++) for (int j = i; j > 0; j--) {
@@ -335,7 +335,7 @@ int main(int argc, char **argv) {
                 if (extra_n == 0) ui_text("(nothing downloaded here)", 24, top + 20, 24, LIGHTGRAY);
                 else {
                     float sc = (float)(WIN_W - 32) / extra_tex.width; if (extra_tex.height * sc > avail_h - 70) sc = (float)(avail_h - 70) / extra_tex.height;
-                    if (extra_cat == 4) { /* tall map: scroll vertically */ sc = (float)(WIN_W - 32) / extra_tex.width; if (sc > 3) sc = 3; extra_scroll -= GetMouseWheelMove() * 200; float maxs = extra_tex.height * sc - (avail_h - 70); if (maxs < 0) maxs = 0; if (extra_scroll < 0) extra_scroll = 0; if (extra_scroll > maxs) extra_scroll = maxs;
+                    if (0) { /* tall map: scroll vertically */ sc = (float)(WIN_W - 32) / extra_tex.width; if (sc > 3) sc = 3; extra_scroll -= GetMouseWheelMove() * 200; float maxs = extra_tex.height * sc - (avail_h - 70); if (maxs < 0) maxs = 0; if (extra_scroll < 0) extra_scroll = 0; if (extra_scroll > maxs) extra_scroll = maxs;
                         BeginScissorMode(0, top, WIN_W, avail_h - 70); DrawTextureEx(extra_tex, (Vector2){(WIN_W - extra_tex.width * sc) / 2, top - extra_scroll}, 0, sc, WHITE); EndScissorMode(); }
                     else DrawTextureEx(extra_tex, (Vector2){(WIN_W - extra_tex.width * sc) / 2, top}, 0, sc, WHITE);
                     char l[64]; snprintf(l, sizeof l, "%d / %d", extra_idx + 1, extra_n);
@@ -400,6 +400,10 @@ int main(int argc, char **argv) {
         if (mode == 3) {
             if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
             if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
+            if (button((Rectangle){WIN_W - 364, r1, 120, bh}, "QUIT", 0)) { CloseWindow(); return 0; }
+            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        ";
+              int fs = 26, w = ui_measure(msg, fs); mx -= 1.5f; if (mx < -w) mx += w;
+              BeginScissorMode(0, r2, WIN_W, bh); ui_text(msg, (int)mx, r2 + 10, fs, (Color){255, 238, 136, 255}); ui_text(msg, (int)mx + w, r2 + 10, fs, (Color){255, 238, 136, 255}); EndScissorMode(); }
             if (debug_ui) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;
