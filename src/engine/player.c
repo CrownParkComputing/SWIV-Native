@@ -111,7 +111,8 @@ void player_vbl(void) {
         PBullet *b = &pb_tbl[t][i];
         if (b->state == 0 || (b->state > 0 && b->gfx == 0x60d4)) continue;
         if (player_bullet_count >= 30) return;
-        player_bullet_render[player_bullet_count++] = (RenderEntry){ (uint16_t)b->key, b->gfx, b->x, (int16_t)(b->y - g.scroll3542), 0 };
+        /* player shots are hardware sprites in the original: palette {1:$FFF, 2:$999, 3:$800 (even sprite pair) / $F80 (odd)} -> flag $80 (+$40 for the odd pair) */
+        player_bullet_render[player_bullet_count++] = (RenderEntry){ (uint16_t)b->key, b->gfx, b->x, (int16_t)(b->y - g.scroll3542), (uint8_t)(0x80 | ((i & 1) << 6)) };
     }
 }
 

@@ -143,12 +143,13 @@ static void draw_sprite_frame(Color *out, char *palname, size_t pn) {
 
 int main(int argc, char **argv) {
     const char *adf = "/home/jon/swiv-amiga-re/SWIVFIX.ADF";
-    const char *shot = NULL; double shot_scroll = 0; int shot_frames = 10; const char *shot_file = NULL;
+    const char *shot = NULL; double shot_scroll = 0; int shot_frames = 10; const char *shot_file = NULL; int autofire = 0;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--adf")) adf = argv[++i];
         else if (!strcmp(argv[i], "--shot")) shot = argv[++i];
         else if (!strcmp(argv[i], "--sprites")) mode = 1;
         else if (!strcmp(argv[i], "--play")) mode = 2;
+        else if (!strcmp(argv[i], "--autofire")) autofire = 1;
         else if (!strcmp(argv[i], "--frames")) shot_frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--file")) shot_file = argv[++i];
         else if (!strcmp(argv[i], "--pal")) sp_pal = atoi(argv[++i]);
@@ -171,7 +172,7 @@ int main(int argc, char **argv) {
             int dx = 0, dy = 0, fire = 0;
             if (IsKeyDown(KEY_LEFT)) dx = -1; if (IsKeyDown(KEY_RIGHT)) dx = 1;
             if (IsKeyDown(KEY_UP)) dy = -1; if (IsKeyDown(KEY_DOWN)) dy = 1;
-            if (IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_LEFT_CONTROL)) fire = 1;
+            if (IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_LEFT_CONTROL) || autofire) fire = 1;
             static Vector2 stick0; static int stick_on = 0;
             int tc = GetTouchPointCount();
             for (int t = 0; t < (tc ? tc : (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? 1 : 0)); t++) {
@@ -202,11 +203,25 @@ int main(int argc, char **argv) {
             for (int i = 0; i < render_count; i++) rl[n++] = render_list[i];
             for (int i = 0; i < player_bullet_count; i++) rl[n++] = player_bullet_render[i];
             for (int i = 1; i < n; i++) { RenderEntry e = rl[i]; int j = i - 1; while (j >= 0 && rl[j].key < e.key) { rl[j + 1] = rl[j]; j--; } rl[j + 1] = e; }
-            for (int i = 0; i < n; i++) { if (rl[i].flags & 0x20) swiv_blit_gfx_shadow(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y, 0); else swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y); }
+            for (int i = 0; i < n; i++) { if (rl[i].flags & 0x80) continue; if (rl[i].flags & 0x20) swiv_blit_gfx_shadow(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y, 0); else swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y); }
+            /* hardware-sprite entries (player shots): own palette, drawn after the playfield */
+            static uint8_t spr[VIEW_W * VIEW_H]; int have_spr = 0;
+            for (int i = 0; i < n; i++) if (rl[i].flags & 0x80) {
+                if (!have_spr) { memset(spr, 255, sizeof spr); have_spr = 1; }
+                SwivCanvas sc = { VIEW_W, VIEW_H, spr, NULL, 0 };
+                swiv_blit_gfx(&disk, &sc, rl[i].gfx, rl[i].x, rl[i].y);
+                /* tag the pair: even pair -> indices as is, odd pair -> +16 */
+                const SwivFrame *F = NULL; (void)F;
+                if (rl[i].flags & 0x40) for (int y = 0; y < VIEW_H; y++) for (int x = 0; x < VIEW_W; x++) if (spr[y * VIEW_W + x] < 16 && spr[y * VIEW_W + x] != 255) spr[y * VIEW_W + x] |= 0x10;
+            }
             for (int y = 0; y < VIEW_H; y++) {
                 Color cols[16];
                 for (int i = 0; i < 16; i++) { swiv_rgb12(rowpal[y][i], &cols[i].r, &cols[i].g, &cols[i].b); cols[i].a = 255; }
                 for (int x = 0; x < VIEW_W; x++) buf[y * VIEW_W + x] = cols[idx[y * VIEW_W + x] & 15];
+            }
+            if (have_spr) {
+                static const Color SPRPAL[2][4] = { { {0,0,0,0}, {255,255,255,255}, {153,153,153,255}, {136,0,0,255} }, { {0,0,0,0}, {255,255,255,255}, {153,153,153,255}, {255,136,0,255} } };
+                for (int i = 0; i < VIEW_W * VIEW_H; i++) { uint8_t v = spr[i]; if (v == 255) continue; int pair = (v >> 4) & 1, ci = v & 15; if (ci && ci < 4) buf[i] = SPRPAL[pair][ci]; }
             }
             int nobj = 0; FOR_EACH_OBJ(ob) nobj++;
             snprintf(status, sizeof status, "PLAY level %d %s   score %06d   objects %d   scroll %04x   tick %d%s",
