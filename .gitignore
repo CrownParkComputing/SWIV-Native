@@ -8,3 +8,8 @@ re/kernel.bin
 re/pipeline/
 extras/hol/swiv.html
 options.txt
+re/amprog.asm
+re/kernel.asm
+re/handlers_group*.asm
+re/ghidra/swiv_decomp.c
+re/ghidra/proj/
