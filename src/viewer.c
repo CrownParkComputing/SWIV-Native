@@ -25,7 +25,7 @@ extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 static SwivDisk disk;
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
 static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0;
-static double scroll_pos; static float speed = 0.25f; static int paused = 0;
+static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title */
 
@@ -103,7 +103,7 @@ static void decode_cover(void) {
 }
 
 /* ---- sprites ---- */
-static int sp_file = 0, sp_frame = 0, sp_pal = N_AMPROG_PAL, sp_anim = 1, sp_zoom = 2; static double sp_t;
+static int sp_file = 0, sp_frame = 0, sp_pal = N_AMPROG_PAL, sp_anim = 0, sp_zoom = 2; static double sp_t;
 static int is_lin(int i) { const char *n = disk.files[i].name; size_t l = strlen(n); return l > 4 && !strcasecmp(n + l - 4, ".LIN"); }
 static int next_lin(int i, int dir) { for (int k = 0; k < disk.nfiles; k++) { i = (i + dir + disk.nfiles) % disk.nfiles; if (is_lin(i)) return i; } return i; }
 static void pal_source(int src, uint16_t pal[16], char *name, size_t n) {
@@ -312,6 +312,15 @@ int main(int argc, char **argv) {
             snprintf(h, sizeof h, "JEEP %06d", g.jeep.score); DrawText(h, WIN_W - 16 - MeasureText(h, 30), 10, 30, (Color){136, 221, 255, 255});
             if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; DrawText(t, (WIN_W - MeasureText(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
         }
+        if (mode == 3) {
+            if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
+            if (debug_ui) {
+                if (button((Rectangle){8, r1, 100, bh}, "MAP", 0)) mode = 0;
+                if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;
+                if (button((Rectangle){224, r1, 100, bh}, "SFX", 0)) mode = 4;
+                if (button((Rectangle){332, r1, 100, bh}, "PLAY", 0)) { mode = 2; game_on = 0; }
+            }
+        }
         if (mode != 3 && (dev || mode == 2)) {
             if (dev) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
@@ -321,10 +330,12 @@ int main(int argc, char **argv) {
             }
         }
         if (mode == 2) {
-            if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
-            if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
-            if (button((Rectangle){224, r1, 100, bh}, "QUIT", 0)) { mode = 3; game_on = 0; }
+            if (IsKeyPressed(KEY_P)) game_paused ^= 1;
+            if (IsKeyPressed(KEY_ESCAPE)) { mode = 3; game_on = 0; }
             if (dev) {
+                if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
+                if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
+                if (button((Rectangle){224, r1, 100, bh}, "QUIT", 0)) { mode = 3; game_on = 0; }
                 for (int k = 0; k < 7; k++) {
                     char l[4]; snprintf(l, 4, "%d", k + 1);
                     if (button((Rectangle){120 + k * 52, r2, 48, bh}, l, eng_level == k)) { map_lv = k; eng_init(&disk, k); player_start(); eng_level = k; }
@@ -333,7 +344,7 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){620, r2, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){730, r2, 100, bh}, "SPRITES", 0)) mode = 1;
                 if (button((Rectangle){840, r2, 100, bh}, "SFX", 0)) mode = 4;
-            } else DrawText("drag left half to steer, right half fires  (or arrows + space)", 340, r1 + 12, 16, LIGHTGRAY);
+            }
         } else if (mode == 0) {
             for (int k = 0; k < 7; k++) {
                 char l[4]; snprintf(l, 4, "%d", k + 1);
