@@ -30,7 +30,7 @@ static Font ui_font; static int ui_font_ok; static Texture2D rr_logo;
 static void ui_text(const char *t, int x, int y, int fs, Color c) { if (ui_font_ok) DrawTextEx(ui_font, t, (Vector2){(float)x, (float)y}, (float)fs, 1, c); else DrawText(t, x, y, fs, c); }
 static int ui_measure(const char *t, int fs) { return ui_font_ok ? (int)MeasureTextEx(ui_font, t, (float)fs, 1).x : MeasureText(t, fs); }
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
-static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0;
+static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0; static int pending_join_heli = 1, pending_join_jeep = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras */
@@ -230,13 +230,15 @@ int main(int argc, char **argv) {
         } else if (mode == 3) {
             if (!cover) decode_cover();
             if (cover) memcpy(buf, cover, sizeof(Color) * VIEW_W * VIEW_H); else memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
-            int start = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_LEFT_CONTROL) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+            /* original: port 2 = helicopter, port 1 = jeep; either fire starts the game with that vehicle, the other can join any time */
+            int start_heli = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+            int start_jeep = IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_LEFT_CONTROL) || IsGamepadButtonPressed(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(1, GAMEPAD_BUTTON_MIDDLE_RIGHT);
             Vector2 mp = GetMousePosition(); if (GetTouchPointCount() > 0) mp = GetTouchPosition(0);
-            if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) start = 1;
-            if (start) { mode = 2; game_on = 0; }
-            snprintf(status, sizeof status, "S.W.I.V.  (C) 1991 The Sales Curve / Storm  --  native  --  press fire / tap to start");
+            if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
+            if (start_heli || start_jeep) { mode = 2; game_on = 0; pending_join_heli = start_heli; pending_join_jeep = start_jeep; }
+            snprintf(status, sizeof status, "S.W.I.V.  (C) 1991 The Sales Curve / Storm  --  native");
         } else if (mode == 2) {
-            if (!game_on) { eng_init(&disk, map_lv < 0 ? 0 : map_lv); player_start(); game_on = 1; eng_level = map_lv < 0 ? 0 : map_lv; }
+            if (!game_on) { eng_init(&disk, map_lv < 0 ? 0 : map_lv); player_start(); game_on = 1; eng_level = map_lv < 0 ? 0 : map_lv; g.heli.joined55 = pending_join_heli; g.jeep.joined55 = pending_join_jeep; }
             int dx = 0, dy = 0, fire = 0;
             if (IsKeyDown(KEY_LEFT)) dx = -1; if (IsKeyDown(KEY_RIGHT)) dx = 1;
             if (IsKeyDown(KEY_UP)) dy = -1; if (IsKeyDown(KEY_DOWN)) dy = 1;
@@ -399,6 +401,12 @@ int main(int argc, char **argv) {
         }
         int dev = (debug_ui || (mode == 0 || mode == 1)) && mode != 5;      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
+        if (mode == 3) {
+            const char *l = "PORT 1  JEEP"; const char *l2 = "WASD + Shift  /  pad 1  /  tap left"; const char *r = "PORT 2  HELICOPTER"; const char *r2 = "arrows + Space  /  pad 0  /  tap right";
+            int yb = VIEW_H * SCALE - 60;
+            ui_text(l, 40, yb - 40, 30, (Color){136, 221, 255, 255}); ui_text(l2, 40, yb - 4, 20, LIGHTGRAY);
+            ui_text(r, WIN_W - 40 - ui_measure(r, 30), yb - 40, 30, (Color){255, 238, 136, 255}); ui_text(r2, WIN_W - 40 - ui_measure(r2, 20), yb - 4, 20, LIGHTGRAY);
+        }
         if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; ui_text(t, (WIN_W - ui_measure(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); ui_text(t, (WIN_W - ui_measure(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
         if (mode == 3) g.vbl++;
         float r1 = by + 26, r2 = by + 72, bh = 40;

@@ -109,6 +109,7 @@ static void bullet_task(Obj *o) {
 /* per-VBL snapshot of the live bullets for the renderer (blit nodes at 26 of each entry; LAB_04AB inserts them) */
 void player_vbl(void) {
     if (!g.jeep.joined55 && player2_input_fire) g.jeep.joined55 = 1;     /* LAB_055A: port-1 fire joins the jeep */
+    if (!g.heli.joined55 && player_input_fire) g.heli.joined55 = 1;      /* port-2 fire joins the heli */
     player_bullet_count = 0;
     for (int t = 0; t < 2; t++) for (int i = 0; i < 30; i++) {
         PBullet *b = &pb_tbl[t][i];
@@ -457,7 +458,7 @@ static void manager_055A(Obj *o) {
     struct Player *p = REC(o);
     /* LAB_055A: wait for the join (natively: player_start() joins the heli at once; the jeep joins when its record's
      * joined55 is set by the frontend) */
-    while (!p->joined55 && !(p == &g.heli)) yield_once(o);
+    while (!p->joined55) yield_once(o);                               /* either port joins on fire (LAB_055A) */
     p->joined55 = -1;
     for (;;) {
         /* LAB_055D: new game for this player */
