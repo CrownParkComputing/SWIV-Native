@@ -34,7 +34,7 @@ static void heli_script(Obj *o) {
     }
     g.heli.alive = 0; g.heli.obj = NULL;
 }
-void player_start(void) { Obj *o = eng_spawn_at(heli_script, 99, NULL); if (o) { o->clock = (int *)&g.clock202; o->time12 = g.clock202; o->name = "heli"; } }
+void player_start(void) { Obj *o = eng_spawn_at(heli_script, 99, NULL); if (o) { o->clock = &g.clock202; o->time12 = g.clock202; o->name = "heli"; } }
 void player_vbl(void) {
     player_bullet_count = 0;
     for (int i = 0; i < 30; i++) if (pb[i].alive) {

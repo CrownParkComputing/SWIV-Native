@@ -64,9 +64,10 @@ enum { F_NO_SHADOW = 1, F_HIT_FLASH = 2, F_FLASH_WITH_PARENT = 4, F_ATTACHED = 8
 typedef struct {
     SwivDisk *disk;
     int vbl;                 /* -72 VBL counter */
-    int tick;                /* -66/-68 tick counter */
+    int tick;                /* game ticks (scheduler passes) */
+    int vblcount;            /* -66/-68: advances every VBL during play */
     int vbl_per_tick;        /* -76 (2) */
-    int16_t clock202, clock204;
+    int clock202, clock204;   /* generation clocks (-1418 compares obj time12 against *clock) */
     int threat156;           /* sum of live threat */
     int game_over160, paused165, alternate168, smart_bomb169, difficulty182, missile_budget206;
     uint16_t scroll3530, scroll3542, cursor3586;  /* map scroll (counts down), as u16 like the original */
@@ -74,6 +75,8 @@ typedef struct {
     int boss140; uint8_t flags166;
     int render_gate155;
     int32_t jeep_limit3558;
+    /* respawn / bonus-zone globals used by JEEPHELI#23/#31/#43 and MEDTANK dust */
+    int g3548, g3550, g3552, g3554, g3556; int zone150, zone152, zone154; int flag3615, flag3616;
     /* player records */
     struct Player { int alive; int no; int vehicle; int16_t joy; int32_t x, y, z; int score; int fire_cd; int invuln106, flicker108; Obj *obj; const char *name; } heli, jeep;
 } Globals;
@@ -97,13 +100,16 @@ void formation(Obj *o, int dx, int dy, int count, int dparam, Script cont);
 
 /* ---------- waits (return 0 = completed, nonzero = signalled) ---------- */
 int  step(Obj *o);                      /* LAB_04E9: one tick with physics */
-int  wait_ticks(Obj *o, int n);         /* LAB_04E4 / LAB_04DE */
+int  wait_ticks(Obj *o, int n);         /* LAB_04E4: n STEPS (each step = vbl_per_tick VBLs) */
+int  wait_vbls(Obj *o, int n);          /* LAB_04DE/LAB_04DD: step until the VBL counter (-66) has advanced n = n VBLs = n/2 steps */
 int  wait_signal(Obj *o);               /* LAB_04E8: until signalled (always returns nonzero) */
 int  wait_onscreen(Obj *o, int margin); /* LAB_06D5: step until y >= scroll3530 + margin */
 int  wait_onscreen_noevents(Obj *o, int margin);  /* LAB_06D4 */
 int  wait_onscreen_inert(Obj *o, int margin);     /* LAB_06D0: plain yields, no physics/render */
 void yield_once(Obj *o);                /* LAB_0499 */
-int  yield_n(Obj *o, int n);            /* LAB_049D/049C/049F: plain yields; returns signalled flag */
+int  yield_n(Obj *o, int n);            /* LAB_049F: n plain yields (n passes) */
+int  yield_vbls(Obj *o, int n);         /* LAB_049D/049C: plain yields until the VBL counter (-68) advanced n */
+#define PX(n) ((int32_t)((uint32_t)(n) << 16))   /* integer px -> 16.16 (negative-safe) */
 
 /* ---------- enemy init / death ---------- */
 void enemy_init(Obj *o, uint16_t gfx, uint16_t mask, int margin, int hp, int score, int threat);  /* LAB_0720 (may yield) */

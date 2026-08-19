@@ -41,7 +41,7 @@ void fx_popup(Obj *o) {
 }
 void explode_at(Obj *o, int dx, int dy) {
     Obj *c = eng_spawn(o, fx_wreck, 100); if (c) { c->x += dx << 16; c->y += dy << 16; }
-    yield_n(o, 20);
+    yield_vbls(o, 20);   /* LAB_049D */
 }
 void boss_smoke(Obj *o) {
     o->w[3] = 0;
@@ -63,7 +63,7 @@ static void bullet_script(Obj *o) {
     for (int n = 2 * (5 + g.difficulty182); n-- > 0; ) {
         struct Player *p = (o->w[0] & 1) ? &g.heli : &g.jeep; if (!p->alive) p = p == &g.heli ? &g.jeep : &g.heli;
         turn_towards(o, p->x >> 16, p->y >> 16, 14); set_velocity_from_angle(o); set_frame_dir16(o, 0x0002);
-        if (wait_ticks(o, 8)) return;
+        if (wait_vbls(o, 8)) return;          /* LAB_04DE(8) */
     }
     wait_signal(o);
 }

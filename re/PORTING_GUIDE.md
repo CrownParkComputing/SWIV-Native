@@ -11,6 +11,9 @@ Read in this order: `re/VERBS.md` (verb semantics), `re/OBJECT.md` (object field
   script is written — sequential code, loops, waits. `o` is A5. When the original does `BRA.W LAB_0725`
   (die), just `return;` — the engine performs LAB_0725 (enemy_cleanup + free) when the function returns.
   If the original frees with LAB_04DC directly (no enemy cleanup), call `eng_free(o); return;`.
+* TIMING (important): objects step every 2 VBLs, but the counter read by LAB_04DE/LAB_04DD/LAB_049D/LAB_049C
+  advances EVERY VBL. So: LAB_04E4(n) -> `wait_ticks(o,n)` (n steps); LAB_04DE(n)/LAB_04DD -> `wait_vbls(o,n)`
+  (n VBLs = n/2 steps); LAB_049D(n)/LAB_049C -> `yield_vbls(o,n)`; LAB_049F(n) -> `yield_n(o,n)`.
 * Every wait verb returns nonzero when the object was signalled: translate `BSR wait ; BNE die` as
   `if (wait_xxx(o, ...)) return;`.
 * Registers the script keeps across waits (D-registers used as loop counters etc.) → use locals; they are

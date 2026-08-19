@@ -58,7 +58,7 @@ Obj *eng_spawn_at(Script s, int prio, Obj *from) {
         memcpy(c->w, from->w, 8 * sizeof(int16_t));
         c->clock = from->clock; c->time12 = from->time12;
         c->animA.flags = from->animA.flags & 1;
-    } else { c->clock = (int *)&g.clock204; c->time12 = g.clock204; }
+    } else { c->clock = &g.clock204; c->time12 = g.clock204; }
     c->margin = -64; c->cb538 = NULL; /* NULL = default signal-self */ c->cb542 = NULL; c->cb534 = NULL;
     c->death376 = fx_explosion; c->enable508 = 0;
     c->h510 = c->h514 = c->h518 = c->h522 = c->h526 = c->h530 = (Callback)eng_free;
@@ -227,6 +227,8 @@ int step(Obj *o) {
     return eng_signalled(o);
 }
 int wait_ticks(Obj *o, int n) { int r = 0; while (n-- > 0) { r = step(o); if (r) break; } return r; }
+int wait_vbls(Obj *o, int n) { int t = g.vblcount + n; int r = 0; while ((int16_t)(g.vblcount - t) < 0) { r = step(o); if (r) break; } return r; }
+int yield_vbls(Obj *o, int n) { int t = g.vblcount + n; while ((int16_t)(g.vblcount - t) < 0) { do_yield(o); if (eng_signalled(o)) return 1; } return eng_signalled(o); }
 int wait_signal(Obj *o) { while (!step(o)) ; return 1; }
 int wait_onscreen(Obj *o, int m) { while ((uint16_t)((o->y >> 16) - m) < g.scroll3530) { if (step(o)) return 1; } return eng_signalled(o); }
 int wait_onscreen_noevents(Obj *o, int m) { uint16_t e = o->enable508; o->enable508 = 0; int r = wait_onscreen(o, m); o->enable508 = e; return r; }
@@ -364,12 +366,12 @@ void eng_init(SwivDisk *d, int level) {
 void eng_spawn_map_object(int x, int mapy, uint16_t gfx, int type) {
     Script s = eng_handler_for_gfx(gfx); if (!s) return;
     Obj *c = eng_spawn_at(s, 100, NULL); if (!c) return;
-    c->x = x << 16; c->y = (int32_t)(int16_t)mapy << 16; c->z = 0; c->w[0] = type; c->clock = (int *)&g.clock204; c->time12 = g.clock204;
+    c->x = x << 16; c->y = (int32_t)(int16_t)mapy << 16; c->z = 0; c->w[0] = type; c->clock = &g.clock204; c->time12 = g.clock204;
     c->gfxset = gfx; c->animA.frame = gfx;
 }
 
 void eng_vbl(void) {
-    g.vbl++;
+    g.vbl++; g.vblcount++;
     scroll_acc += 0x4000;              /* 1/4 px per VBL (measured TOWN) */
     while (scroll_acc >= 0x10000) { scroll_acc -= 0x10000; g.scroll3530--; }
     eng_map_interpreter();
