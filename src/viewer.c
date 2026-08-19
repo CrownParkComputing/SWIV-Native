@@ -349,9 +349,7 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){120 + k * 52, r1, 48, bh}, l, map_lv == k)) load_level(k);
             }
             if (button((Rectangle){500, r1, 90, bh}, paused ? "PLAY" : "PAUSE", paused)) paused ^= 1;
-            if (button((Rectangle){600, r1, 90, bh}, "GROUND", show_ground)) { double s = scroll_pos; show_ground ^= 1; load_level(map_lv); scroll_pos = s; }
-            if (button((Rectangle){700, r1, 70, bh}, "AIR", show_air)) { double s = scroll_pos; show_air ^= 1; load_level(map_lv); scroll_pos = s; }
-            if (button((Rectangle){780, r1, 70, bh}, "RST", 0)) scroll_pos = MAP_START;
+
             /* row 2: speed + scrub */
             ui_text("SPEED", 120, r2 + 12, 16, LIGHTGRAY);
             if (button((Rectangle){190, r2, 48, bh}, "/2", 0)) speed /= 2;
