@@ -47,11 +47,18 @@ static void load_level(int lv) {
 }
 static void draw_map_frame(Color *out) {
     int top = map.height + SWIV_MARGIN - (int)scroll_pos - VIEW_H;
-    uint16_t pal[16]; swiv_map_palette_at(&map, (int)scroll_pos, pal);
-    Color cols[16];
-    for (int i = 0; i < 16; i++) { swiv_rgb12(pal[i], &cols[i].r, &cols[i].g, &cols[i].b); cols[i].a = 255; }
+    /* The real game applies the map's colour commands per scanline (copper
+     * split that travels with the map -- verified against oracle frames), so
+     * each screen row takes the palette checkpoint of its own map row. */
+    int last_id = -2; Color cols[16];
     for (int y = 0; y < VIEW_H; y++) {
         int sy = top + y;
+        int id = swiv_map_palid_at(&map, map.height + SWIV_MARGIN - sy);
+        if (id != last_id) {
+            uint16_t pal[16]; swiv_map_palette_row(&map, sy, pal);
+            for (int i = 0; i < 16; i++) { swiv_rgb12(pal[i], &cols[i].r, &cols[i].g, &cols[i].b); cols[i].a = 255; }
+            last_id = id;
+        }
         for (int x = 0; x < VIEW_W; x++)
             out[y * VIEW_W + x] = (sy >= 0 && sy < canvas.h) ? cols[canvas.px[(size_t)sy * canvas.w + x] & 15] : BLACK;
     }
