@@ -14,6 +14,7 @@
  * Sequence = LAB_00B2 main loop, run as a coroutine that yields once per VBL. */
 #include "frontend.h"
 #include "engine/coro.h"
+#include "engine/engine.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -344,12 +345,18 @@ static void screen_blueprint(int heli) {
 }
 
 /* ---- hi-score tables (LAB_0284 init, LAB_02BB display, LAB_0291/LAB_0299 entry) ---- */
-typedef struct { char name[32]; long score; } HsEntry;
-static HsEntry hs[2][7]; static int hs_init;
+typedef struct { char name[32]; long score; int shots, pct; } HsEntry;
+static HsEntry hs[2][7];
+static void hs_save(void) { FILE *f = fopen("hiscores.txt", "w"); if (!f) return; for (int p = 0; p < 2; p++) for (int i = 0; i < 7; i++) fprintf(f, "%d %ld %d %d %s\n", p, hs[p][i].score, hs[p][i].shots, hs[p][i].pct, hs[p][i].name); fclose(f); }
+static int hs_load(void) { FILE *f = fopen("hiscores.txt", "r"); if (!f) return 0; int p, sh, pc; long sc; char nm[64]; int n = 0, idx[2] = { 0, 0 };
+    while (fscanf(f, "%d %ld %d %d %63[^\n]", &p, &sc, &sh, &pc, nm) == 5) { if (p < 0 || p > 1 || idx[p] >= 7) continue; HsEntry *e = &hs[p][idx[p]++]; e->score = sc; e->shots = sh; e->pct = pc; snprintf(e->name, 32, "%s", nm); n++; }
+    fclose(f); return n == 14; }
+static int hs_init;
 static int hs_rng;
 static void hs_tables_init(void) {             /* LAB_0284: one random HSn.TXT per player (heli hs1-8, jeep hs9-16), 7 names */
     if (hs_init) return;
     hs_init = 1;
+    if (hs_load()) return;          /* native: persistent table with shots / accuracy */
     static const long SCORES[7] = { 70000, 60000, 50000, 40000, 30000, 20000, 10000 };   /* $20f11e */
     for (int p = 0; p < 2; p++) {
         char fn[16]; snprintf(fn, sizeof fn, "HS%d.TXT", (hs_rng = hs_rng * 1103515245 + 12345, (hs_rng >> 16) & 7) + 1 + p * 8);
@@ -359,9 +366,12 @@ static void hs_tables_init(void) {             /* LAB_0284: one random HSn.TXT p
         for (; k < 7; k++) { snprintf(hs[p][k].name, 32, "SWIV"); hs[p][k].score = SCORES[k]; }
     }
 }
-static void hs_entry_line(const HsEntry *e) {  /* LAB_02C1 */
-    tx0 = 0x20; text_align(1); print(e->name); text_flush();
-    tx0 = 0x122; text_align(2); print_num(e->score / 10, 5); text_char('0'); text_flush();
+static void hs_entry_line(const HsEntry *e) {  /* LAB_02C1 + native shots / accuracy columns */
+    char nm[16]; snprintf(nm, sizeof nm, "%.12s", e->name);
+    tx0 = 0x10; text_align(1); print(nm); text_flush();
+    tx0 = 0xB8; text_align(2); print_num(e->shots, 5); text_flush();
+    tx0 = 0xE4; text_align(2); print_num(e->pct, 3); text_char('%'); text_flush();
+    tx0 = 0x132; text_align(2); print_num(e->score / 10, 5); text_char('0'); text_flush();
     ty0 += 16;
 }
 static void hs_table_draw(int p) {             /* LAB_02BB @ $20f034 */
@@ -369,7 +379,8 @@ static void hs_table_draw(int p) {             /* LAB_02BB @ $20f034 */
     set_pal(0x20e71c); cop_list(0x82, 0x20e96f); cop_list(0x9e, 0x20e997);          /* $20f0b6 */
     cop_list(0x30, 0x20e8ff); for (int r = 0x40; r <= 0xc0; r += 0x10) cop_list(r, 0x20e90f); cop_list(0xd0, 0x20e95f);   /* $20e9c8 */
     print("_x160_y048_c15_a0TODAY'S BEST "); print(p ? "JEEP " : "HELI "); print("SCORES_n");
-    text_at(0x20, 0x50);
+    text_at(0x10, 0x40); tx0 = 0x10; text_align(1); tcol = 15; print("NAME"); text_flush(); tx0 = 0xB8; text_align(2); print("SHOTS"); text_flush(); tx0 = 0xE4; text_align(2); print("ACC"); text_flush(); tx0 = 0x132; text_align(2); print("SCORE"); text_flush();
+    text_at(0x10, 0x50);
     for (int i = 0; i < 7; i++) hs_entry_line(&hs[p][i]);
 }
 /* ---- LAB_02B6/LAB_02B8: attract hi-score screens */
@@ -381,14 +392,15 @@ static int hs_qualifies(int p, long score) { return score > hs[p][6].score; }   
 /* LAB_028D: insert, show the table, prompt, name entry (LAB_0299).  Keyboard from fe_key(). */
 static void screen_hiscore_entry(int p, long score) {
     hs_tables_init();
+    int shots = g.stat_shots_p[p], pct = shots ? g.stat_hits_p[p] * 100 / shots : 0;
     int rank = 0; while (rank < 6 && score <= hs[p][rank].score) rank++;            /* LAB_02B2 (new entry goes above equal scores) */
     for (int i = 6; i > rank; i--) hs[p][i] = hs[p][i - 1];
-    hs[p][rank].name[0] = 0; hs[p][rank].score = score;
+    hs[p][rank].name[0] = 0; hs[p][rank].score = score; hs[p][rank].shots = shots; hs[p][rank].pct = pct;
     hs_table_draw(p);
     print("_x160_y208_c15_a0"); print(p ? "JEEP " : "HELI "); print("player please enter your name_n");   /* LAB_0291 */
     skip160 = 0; fade_in();
     /* LAB_0299: cursor blink 25 VBLs on/off, 80 blinks max (then accepted), Return/Esc end, Backspace deletes */
-    char *name = hs[p][rank].name; int len = 0, x = 0x20, y = 0x50 + rank * 16, done = 0;
+    char *name = hs[p][rank].name; int len = 0, x = 0x10, y = 0x50 + rank * 16, done = 0;
     for (int blink = 0; blink < 80 && !done; blink++) {
         for (int phase = 0; phase < 2 && !done; phase++) {
             /* redraw the name + cursor (LAB_02A3/LAB_02A7/LAB_02A9): "\" is the full-block glyph */
@@ -403,6 +415,7 @@ static void screen_hiscore_entry(int p, long score) {
         }
     }
     if (!len) snprintf(name, 32, "%s", p ? "Lazy Jeep" : "Lazy Heli");               /* LAB_0293: default name */
+    hs_save();
     text_at(x, y); text_align(1); print(name); print("   _f");
     print("_x160_y208_a0_c15"); print("                                                      _n");   /* blank the prompt */
 }
