@@ -344,11 +344,11 @@ static void screen_blueprint(int heli) {
 }
 
 /* ---- hi-score tables (LAB_0284 init, LAB_02BB display, LAB_0291/LAB_0299 entry) ---- */
-typedef struct { char name[32]; long score; int shots, pct; } HsEntry;
+typedef struct { char name[32]; long score; int shots, pct, diff; } HsEntry;
 static HsEntry hs[2][7];
-static void hs_save(void) { FILE *f = fopen("hiscores.txt", "w"); if (!f) return; for (int p = 0; p < 2; p++) for (int i = 0; i < 7; i++) fprintf(f, "%d %ld %d %d %s\n", p, hs[p][i].score, hs[p][i].shots, hs[p][i].pct, hs[p][i].name); fclose(f); }
-static int hs_load(void) { FILE *f = fopen("hiscores.txt", "r"); if (!f) return 0; int p, sh, pc; long sc; char nm[64]; int n = 0, idx[2] = { 0, 0 };
-    while (fscanf(f, "%d %ld %d %d %63[^\n]", &p, &sc, &sh, &pc, nm) == 5) { if (p < 0 || p > 1 || idx[p] >= 7) continue; HsEntry *e = &hs[p][idx[p]++]; e->score = sc; e->shots = sh; e->pct = pc; snprintf(e->name, 32, "%s", nm); n++; }
+static void hs_save(void) { FILE *f = fopen("hiscores.txt", "w"); if (!f) return; for (int p = 0; p < 2; p++) for (int i = 0; i < 7; i++) fprintf(f, "%d %ld %d %d %d %s\n", p, hs[p][i].score, hs[p][i].shots, hs[p][i].pct, hs[p][i].diff, hs[p][i].name); fclose(f); }
+static int hs_load(void) { FILE *f = fopen("hiscores.txt", "r"); if (!f) return 0; int p, sh, pc, df; long sc; char nm[64]; int n = 0, idx[2] = { 0, 0 };
+    while (fscanf(f, "%d %ld %d %d %d %63[^\n]", &p, &sc, &sh, &pc, &df, nm) == 6) { if (p < 0 || p > 1 || idx[p] >= 7) continue; HsEntry *e = &hs[p][idx[p]++]; e->score = sc; e->shots = sh; e->pct = pc; e->diff = df; snprintf(e->name, 32, "%s", nm); n++; }
     fclose(f); return n == 14; }
 static int hs_init;
 static int hs_rng;
@@ -368,8 +368,9 @@ static void hs_tables_init(void) {             /* LAB_0284: one random HSn.TXT p
 static void hs_entry_line(const HsEntry *e) {  /* LAB_02C1 + native shots / accuracy columns */
     char nm[16]; snprintf(nm, sizeof nm, "%.12s", e->name);
     tx0 = 0x10; text_align(1); print(nm); text_flush();
-    tx0 = 0xB8; text_align(2); print_num(e->shots, 5); text_flush();
-    tx0 = 0xE4; text_align(2); print_num(e->pct, 3); text_char('%'); text_flush();
+    tx0 = 0xA4; text_align(2); print_num(e->shots, 5); text_flush();
+    tx0 = 0xCA; text_align(2); print_num(e->pct, 3); text_char('%'); text_flush();
+    tx0 = 0xE0; text_align(2); text_char("ENH"[e->diff < 0 ? 1 : e->diff > 2 ? 1 : e->diff]); text_flush();
     tx0 = 0x132; text_align(2); print_num(e->score / 10, 5); text_char('0'); text_flush();
     ty0 += 16;
 }
@@ -378,7 +379,7 @@ static void hs_table_draw(int p) {             /* LAB_02BB @ $20f034 */
     set_pal(0x20e71c); cop_list(0x82, 0x20e96f); cop_list(0x9e, 0x20e997);          /* $20f0b6 */
     cop_list(0x30, 0x20e8ff); for (int r = 0x40; r <= 0xc0; r += 0x10) cop_list(r, 0x20e90f); cop_list(0xd0, 0x20e95f);   /* $20e9c8 */
     print("_x160_y048_c15_a0TODAY'S BEST "); print(p ? "JEEP " : "HELI "); print("SCORES_n");
-    text_at(0x10, 0x40); tx0 = 0x10; text_align(1); tcol = 15; print("NAME"); text_flush(); tx0 = 0xB8; text_align(2); print("SHOTS"); text_flush(); tx0 = 0xE4; text_align(2); print("ACC"); text_flush(); tx0 = 0x132; text_align(2); print("SCORE"); text_flush();
+    text_at(0x10, 0x40); tx0 = 0x10; text_align(1); tcol = 15; print("NAME"); text_flush(); tx0 = 0xA4; text_align(2); print("SHOTS"); text_flush(); tx0 = 0xCA; text_align(2); print("ACC"); text_flush(); tx0 = 0xE0; text_align(2); print("D"); text_flush(); tx0 = 0x132; text_align(2); print("SCORE"); text_flush();
     text_at(0x10, 0x50);
     for (int i = 0; i < 7; i++) hs_entry_line(&hs[p][i]);
 }
@@ -391,11 +392,11 @@ static int hs_qualifies(int p, long score) { return score > hs[p][6].score; }   
 /* LAB_028D: insert, show the table, prompt, name entry (LAB_0299).  Keyboard from fe_key(). */
 static void screen_hiscore_entry(int p, long score) {
     hs_tables_init();
-    extern int fe_stat_shots(int p), fe_stat_hits(int p);
+    extern int fe_stat_shots(int p), fe_stat_hits(int p), fe_difficulty(void);
     int shots = fe_stat_shots(p), pct = shots ? fe_stat_hits(p) * 100 / shots : 0;
     int rank = 0; while (rank < 6 && score <= hs[p][rank].score) rank++;            /* LAB_02B2 (new entry goes above equal scores) */
     for (int i = 6; i > rank; i--) hs[p][i] = hs[p][i - 1];
-    hs[p][rank].name[0] = 0; hs[p][rank].score = score; hs[p][rank].shots = shots; hs[p][rank].pct = pct;
+    hs[p][rank].name[0] = 0; hs[p][rank].score = score; hs[p][rank].shots = shots; hs[p][rank].pct = pct; hs[p][rank].diff = fe_difficulty();
     hs_table_draw(p);
     print("_x160_y208_c15_a0"); print(p ? "JEEP " : "HELI "); print("player please enter your name_n");   /* LAB_0291 */
     skip160 = 0; fade_in();

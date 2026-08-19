@@ -79,6 +79,7 @@ static int button(Rectangle r, const char *label, int active) {
 static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
 
 int fe_stat_shots(int p) { return g.stat_shots_p[p & 1]; }
+int fe_difficulty(void) { return eng_difficulty_mode; }
 int fe_stat_hits(int p) { return g.stat_hits_p[p & 1]; }
 
 /* ---- gamepads: skip keyboard/mouse receivers that GLFW reports as joysticks ---- */
@@ -545,6 +546,7 @@ int main(int argc, char **argv) {
             for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? (Color){200, 200, 200, 255} : (Color){0, 0, 0, 0};
             UpdateTexture(stex2, simg);
             DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + BAR_H - 30, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);   /* stats at the foot of the bar, gap from the score line */
+            { static const char *DN[3] = { "EASY", "NORMAL", "HARD" }; const char *d = DN[eng_difficulty_mode < 0 ? 1 : eng_difficulty_mode > 2 ? 1 : eng_difficulty_mode]; ui_text(d, (WIN_W - ui_measure(d, 22)) / 2, by + BAR_H - 30, 22, LIGHTGRAY); }
             if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
         }
         if (mode == 3) {
