@@ -98,9 +98,10 @@ void audio_init(SwivDisk *d) {
                 double a = 1.0 - exp(-2.0 * 3.14159265 * 4000.0 / 22050.0), y1 = 0, y2 = 0;
                 for (int k = 0; k < fr; k++) { y1 += a * (pcm[k] - y1); y2 += a * (y1 - y2); pcm[k] = (int16_t)y2; }
             }
-            if (pcm && fr > 0) {   /* single-voice effects render at 1/4 scale (one Paula channel): normalise quiet entries so hits/shots are audible next to 4-voice explosions */
-                int pk = 1; for (int k = 0; k < fr; k++) { int v = pcm[k] < 0 ? -pcm[k] : pcm[k]; if (v > pk) pk = v; }
-                if (pk < 20000) { float gsc = 20000.0f / pk; for (int k = 0; k < fr; k++) pcm[k] = (int16_t)(pcm[k] * gsc); }
+            if (pcm && fr > 0) {   /* the bank is at real relative levels (one voice 6144, 4-voice chord 16384, see sfx_bank.h); the
+                                      A500 mixer's 1.8 output gain puts a chord at 90% full scale and a single voice at 34%.
+                                      Do NOT normalise per entry: that made shots as loud as explosions (0.6 : 1 instead of 0.375 : 1) */
+                for (int k = 0; k < fr; k++) { int v = (int)(pcm[k] * 1.8f); pcm[k] = (int16_t)(v > 32767 ? 32767 : v < -32768 ? -32768 : v); }
             }
             if (pcm && fr > 0) bank_rebuild(i);
         }

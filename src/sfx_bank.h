@@ -1,10 +1,14 @@
 /* sfx_bank.h -- SWIV sound-effect bank synthesised from the original Paula sound
  * driver in AMPROG.OBJ (LAB_03AD .. LAB_0430, see re/amprog.asm).
  *
- * Every entry is a data-faithful re-run of the 68000 per-frame voice coroutine
+ * Every entry is a data-faithful re-run of the 68000 per-tick voice coroutine
  * through an exact Paula model (8-bit signed data at 3546895/period Hz, volume
- * 0..64 linear, register changes once per 50 Hz VBL, 4 hardware voices with the
- * driver's priority/voice allocation), rendered to 16-bit mono PCM at 22050 Hz. */
+ * 0..64 linear, register changes once per ~200 Hz CIA-B driver tick, 4 hardware
+ * voices with the driver's priority/voice allocation), rendered to 16-bit mono PCM
+ * at 22050 Hz at the level of the listener's nearer ear in the A500's 0.75/0.25
+ * stereo blend: one full-volume voice = 6144 peak, a 4-voice chord = 16384.
+ * Verified against the Musashi host's Paula output (SWIV-Amiga --wav/SWIV_SFXLOG):
+ * duration, 20 ms RMS envelope and pitch track agree for every reachable routine. */
 #ifndef SWIV_SFX_BANK_H
 #define SWIV_SFX_BANK_H
 #include <stdint.h>

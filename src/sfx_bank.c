@@ -32,11 +32,13 @@
 #include <string.h>
 
 #define OUT_RATE      22050
-#define TICK_HZ       202.3          /* CIA-B TA one-shot 3464 E-clocks + INT6 re-arm latency */
-#define FRAME_SAMPLES 109            /* 22050 / TICK_HZ, one driver tick */
+#define TICK_HZ       200.0          /* CIA-B TA one-shot 3464 E-clocks + the handler's re-arm latency */
+#define FRAME_SAMPLES 110            /* 22050 / TICK_HZ, one driver tick */
 #define PAULA_CLK     3546895.0
+#define MIN_PERIOD    113.75         /* one data word (2 samples) per 227.5-clock scanline: below this
+                                        the word is replayed, so the audible rate pins here (LAB_041D hits 72) */
 #define MAX_FRAMES    2048           /* cap for bodies that never end (~10 s) */
-#define VOICE_GAIN    1              /* 127*64 = 8128 per voice: 4 voices = full scale, like the hardware */
+#define VOICE_GAIN    1              /* 127*64 = 8128 per voice = one Paula channel at full volume */
 
 /* ------------------------------------------------------------------ Paula voice */
 typedef struct {
@@ -60,11 +62,11 @@ static void wait(Voice *v) {
     if (v->nframes >= MAX_FRAMES) longjmp(v->jb, 1);
     if (v->dma_pending) {            /* DMACON set: latch AUDxLC/LEN, start fetching */
         v->dma_pending = 0; v->dma = 1; v->cur = v->lc; v->cur_len = v->len ? v->len * 2 : 131072;
-        v->idx = 0; v->acc = v->per < 124 ? 124 / PAULA_CLK : v->per / PAULA_CLK; v->passes = 0;
+        v->idx = 0; v->acc = (v->per < MIN_PERIOD ? MIN_PERIOD : v->per) / PAULA_CLK; v->passes = 0;
     }
     int16_t *o = v->out + v->nframes * FRAME_SAMPLES;
     int vol = v->vol & 0x7f; if (vol > 64) vol = 64;
-    unsigned per = v->per; if (per < 124) per = 124;             /* DMA can't fetch faster */
+    double per = v->per < MIN_PERIOD ? MIN_PERIOD : v->per;     /* DMA can't fetch faster */
     double tsamp = per / PAULA_CLK, tout = 1.0 / OUT_RATE;
     for (int i = 0; i < FRAME_SAMPLES; i++) {
         if (!v->dma || !v->cur) { o[i] = 0; continue; }
@@ -433,12 +435,27 @@ int16_t *sfx_bank_render(int i, SwivDisk *d, int *frames_out) {
         if (c->end > total) total = c->end;
     }
     free(v);
+    /* Mix as the listener's nearer ear hears it: Paula voices 0/3 (AUD3/AUD0) are the
+     * left channel, 1/2 the right; the A500's output blended 0.75 own side + 0.25 other.
+     * The louder side is taken as "near" (audio.c pans the result by x afterwards), so a
+     * single voice comes out at 0.75 * 8192 = 6144 and a 4-voice chord (two per side) at
+     * 16384 -- the 1 : 2.67 ratio of the real stereo mix, measured on the Musashi host
+     * (a hardware mono sum would be 1 : 4; the bank's old mono sum was that). */
     int nsamp = total * FRAME_SAMPLES;
     int16_t *out = calloc((size_t)(nsamp ? nsamp : 1), sizeof(int16_t));
-    if (out) for (int c = 0; c < nclips; c++) {
-        int n = (clips[c].end - clips[c].start) * FRAME_SAMPLES, o = clips[c].start * FRAME_SAMPLES;
-        for (int s = 0; s < n; s++) { int m = out[o + s] + clips[c].pcm[s]; out[o + s] = (int16_t)(m > 32767 ? 32767 : m < -32768 ? -32768 : m); }
+    int32_t *side = calloc((size_t)(nsamp ? nsamp : 1) * 2, sizeof(int32_t));
+    if (out && side) {
+        for (int c = 0; c < nclips; c++) {
+            int n = (clips[c].end - clips[c].start) * FRAME_SAMPLES, o = clips[c].start * FRAME_SAMPLES;
+            int32_t *dst = side + ((clips[c].voice == 0 || clips[c].voice == 3) ? 0 : nsamp);
+            for (int s = 0; s < n; s++) dst[o + s] += clips[c].pcm[s];
+        }
+        int32_t pl = 0, pr = 0;
+        for (int s = 0; s < nsamp; s++) { int32_t a = side[s] < 0 ? -side[s] : side[s], b = side[nsamp + s] < 0 ? -side[nsamp + s] : side[nsamp + s]; if (a > pl) pl = a; if (b > pr) pr = b; }
+        const int32_t *near = pl >= pr ? side : side + nsamp, *far = pl >= pr ? side + nsamp : side;
+        for (int s = 0; s < nsamp; s++) { int m = (near[s] * 3 + far[s]) / 4; out[s] = (int16_t)(m > 32767 ? 32767 : m < -32768 ? -32768 : m); }
     }
+    free(side);
     for (int c = 0; c < nclips; c++) free(clips[c].pcm);
     if (!out) return NULL;
     if (frames_out) *frames_out = nsamp;
