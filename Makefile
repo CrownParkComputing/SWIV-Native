@@ -1,6 +1,6 @@
 CC ?= cc
 CFLAGS = -O2 -std=c11 -Wall -Wextra -D_DEFAULT_SOURCE -D_GNU_SOURCE
-RAYLIB = -I$(HOME)/.local/include $(HOME)/.local/lib/libraylib.a -lm -lpthread -ldl -lGL -lX11
+RAYLIB = -I$(HOME)/.local/include $(HOME)/.local/lib/libraylib.a -lxmp -lm -lpthread -ldl -lGL -lX11
 
 all: build/dumpmap build/swivview build/simrun
 

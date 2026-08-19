@@ -3,12 +3,14 @@
  * Paula driver (LAB_03AD + LAB_03xx), not yet ported -- stand-ins below. */
 #include "engine/engine.h"
 #include "raylib.h"
+#include <xmp.h>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static Sound snd[8]; static int ready;
-static Music music; static int have_music;
+static xmp_context xc; static AudioStream mstream; static int music_on; static int16_t mbuf[4096];
 
 /* Paula emulation for the original's sound routines (LAB_03C1.. in AMPROG): a voice plays
  * 8-bit signed data at rate 3546895/period with a volume envelope over n VBLs. */
@@ -50,12 +52,26 @@ void audio_init(SwivDisk *d) {
     voice(noise8, 256, 1, 0x60, 64, 50, 0); snd[SFX_MISSILE] = finish();                       /* LAB_040C approx (period $60, 50 frames) */
     voice(WAVE_SHOT, 8, 1, 0x200, 40, 10, 0); voice(WAVE_SHOT, 8, 1, 0x100, 40, 10, 10); snd[SFX_PICKUP] = finish();   /* LAB_03F3 two-tone approx */
     ready = 1;
-    /* MOD playback opt-in: raylib's jar_mod hung on AMTITUNE.MOD (set SWIV_MUSIC=1 to try) */
-    if (getenv("SWIV_MUSIC")) { i = swiv_find(d, "AMTITUNE.MOD");
-        if (i >= 0 && (p = swiv_load(d, i, &n))) { music = LoadMusicStreamFromMemory(".mod", p, n); have_music = music.frameCount > 0; } }
+    xc = xmp_create_context();
+    mstream = LoadAudioStream(44100, 16, 2);
 }
-void audio_update(void) { if (have_music) UpdateMusicStream(music); }
-void audio_music(int on) { if (!have_music) return; if (on) { if (!IsMusicStreamPlaying(music)) PlayMusicStream(music); } else StopMusicStream(music); }
+/* MOD music via libxmp: name = "AMTITUNE.MOD" (title) / "AMHITUNE.MOD" (hi-score) / NULL = stop */
+static SwivDisk *mdisk; static char mcur[32];
+void audio_music_play(SwivDisk *d, const char *name) {
+    if (!ready) return;
+    if (!name) { if (music_on) { StopAudioStream(mstream); xmp_end_player(xc); xmp_release_module(xc); music_on = 0; mcur[0] = 0; } return; }
+    if (music_on && !strcmp(mcur, name)) return;
+    audio_music_play(d, NULL);
+    uint32_t n; int i = swiv_find(d, name); const uint8_t *p;
+    if (i < 0 || !(p = swiv_load(d, i, &n))) return;
+    if (xmp_load_module_from_memory(xc, (void *)p, n) != 0) return;
+    xmp_start_player(xc, 44100, 0); xmp_set_player(xc, XMP_PLAYER_AMP, 1); xmp_set_player(xc, XMP_PLAYER_MIX, 70);
+    PlayAudioStream(mstream); music_on = 1; snprintf(mcur, sizeof mcur, "%s", name); mdisk = d;
+}
+void audio_update(void) {
+    if (!music_on) return;
+    while (IsAudioStreamProcessed(mstream)) { xmp_play_buffer(xc, mbuf, sizeof mbuf, 0); UpdateAudioStream(mstream, mbuf, sizeof mbuf / 4); }
+}
 void sfx(int id, int x) {
     if (!ready || id < 0 || id >= 8 || snd[id].frameCount == 0) return;
     SetSoundPan(snd[id], 1.0f - (float)x / 320.0f * 0.6f - 0.2f);

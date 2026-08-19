@@ -3,7 +3,7 @@
 #include "swivdata.h"
 #include "engine/engine.h"
 extern void player_start(void); extern void player_vbl(void);
-extern void audio_init(SwivDisk *d); extern void audio_update(void); extern void audio_music(int on);
+extern void audio_init(SwivDisk *d); extern void audio_update(void); extern void audio_music_play(SwivDisk *d, const char *name);
 extern int player_input_dx, player_input_dy, player_input_fire;
 extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
@@ -25,7 +25,7 @@ static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_groun
 static int game_on = 0; static int game_paused = 0; static int eng_level = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 0;
 static Texture2D tex; static Image img;
-static int mode = 0;              /* 0 map, 1 sprites, 2 play */
+static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title */
 
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
@@ -85,6 +85,18 @@ static void draw_map_frame(Color *out) {
         }
         for (int x = 0; x < VIEW_W; x++)
             out[y * VIEW_W + x] = (sy >= 0 && sy < canvas.h) ? cols[canvas.px[(size_t)sy * canvas.w + x] & 15] : BLACK;
+    }
+}
+
+/* ---- title (COVER.RAW: 320x256, 4 planes sequential, 16 x RGB12 palette at the end) ---- */
+static Color *cover;
+static void decode_cover(void) {
+    int i = swiv_find(&disk, "COVER.RAW"); uint32_t n; const uint8_t *d; if (i < 0 || !(d = swiv_load(&disk, i, &n)) || n < 40992) return;
+    cover = malloc(sizeof(Color) * VIEW_W * VIEW_H); Color pal[16];
+    for (int k = 0; k < 16; k++) { uint16_t v = (d[n - 32 + 2 * k] << 8) | d[n - 32 + 2 * k + 1]; swiv_rgb12(v, &pal[k].r, &pal[k].g, &pal[k].b); pal[k].a = 255; }
+    for (int y = 0; y < VIEW_H; y++) for (int x = 0; x < VIEW_W; x++) {
+        int v = 0; for (int pl = 0; pl < 4; pl++) if (d[pl * 40 * 256 + y * 40 + (x >> 3)] & (0x80 >> (x & 7))) v |= 1 << pl;
+        cover[y * VIEW_W + x] = pal[v];
     }
 }
 
@@ -166,8 +178,16 @@ int main(int argc, char **argv) {
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
-        audio_update(); audio_music(mode != 2);
-        if (mode == 2) {
+        audio_update(); audio_music_play(&disk, mode == 3 ? "AMTITUNE.MOD" : NULL);
+        if (mode == 3) {
+            if (!cover) decode_cover();
+            if (cover) memcpy(buf, cover, sizeof(Color) * VIEW_W * VIEW_H); else memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
+            int start = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_LEFT_CONTROL) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+            Vector2 mp = GetMousePosition(); if (GetTouchPointCount() > 0) mp = GetTouchPosition(0);
+            if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) start = 1;
+            if (start) { mode = 2; game_on = 0; }
+            snprintf(status, sizeof status, "S.W.I.V.  (C) 1991 The Sales Curve / Storm  --  native  --  press fire / tap to start");
+        } else if (mode == 2) {
             if (!game_on) { eng_init(&disk, map_lv < 0 ? 0 : map_lv); player_start(); game_on = 1; eng_level = map_lv < 0 ? 0 : map_lv; }
             int dx = 0, dy = 0, fire = 0;
             if (IsKeyDown(KEY_LEFT)) dx = -1; if (IsKeyDown(KEY_RIGHT)) dx = 1;
@@ -249,11 +269,14 @@ int main(int argc, char **argv) {
         int by = VIEW_H * SCALE;
         DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
         DrawText(status, 8, by + 4, 16, RAYWHITE);
+        if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; DrawText(t, (WIN_W - MeasureText(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); DrawText(t, (WIN_W - MeasureText(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
+        if (mode == 3) g.vbl++;
         float r1 = by + 26, r2 = by + 72, bh = 40;
         /* left: mode toggle */
         if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
         if (button((Rectangle){8, r2, 100, bh}, "SPRITES", mode == 1)) mode = 1;
         if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_on = 0; } mode = 2; }
+        if (mode != 2 && button((Rectangle){WIN_W - 108, r2, 100, bh}, "TITLE", mode == 3)) mode = 3;
         if (mode == 2) {
             for (int k = 0; k < 7; k++) {
                 char l[4]; snprintf(l, 4, "%d", k + 1);
@@ -287,7 +310,7 @@ int main(int argc, char **argv) {
             DrawRectangleRec(pb, (Color){50, 50, 58, 255});
             DrawRectangle(pb.x, pb.y + pb.height * (1 - scroll_pos / (map.height ? map.height : 1)), pb.width, 3, SKYBLUE);
             if (held(pb)) { Vector2 p = GetMousePosition(); scroll_pos = (1 - (p.y - pb.y) / pb.height) * map.height; }
-        } else {
+        } else if (mode == 1) {
             if (button((Rectangle){120, r1, 90, bh}, "< FILE", 0)) { sp_file = next_lin(sp_file, -1); sp_frame = 0; }
             if (button((Rectangle){216, r1, 90, bh}, "FILE >", 0)) { sp_file = next_lin(sp_file, 1); sp_frame = 0; }
             const SwivLin *L = swiv_lin(&disk, sp_file);
