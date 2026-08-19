@@ -23,6 +23,9 @@ extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #define N_AMPROG_PAL 11
 
 static SwivDisk disk;
+static Font ui_font; static int ui_font_ok;
+static void ui_text(const char *t, int x, int y, int fs, Color c) { if (ui_font_ok) DrawTextEx(ui_font, t, (Vector2){(float)x, (float)y}, (float)fs, 1, c); else DrawText(t, x, y, fs, c); }
+static int ui_measure(const char *t, int fs) { return ui_font_ok ? (int)MeasureTextEx(ui_font, t, (float)fs, 1).x : MeasureText(t, fs); }
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
 static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 1;
@@ -39,9 +42,9 @@ static int button(Rectangle r, const char *label, int active) {
     int hot = ui_hit(r);
     Color bg = active ? (Color){70, 130, 200, 255} : hot ? (Color){80, 80, 90, 255} : (Color){50, 50, 58, 255};
     DrawRectangleRec(r, bg); DrawRectangleLinesEx(r, 1, (Color){120, 120, 130, 255});
-    int fs = 24; int tw = MeasureText(label, fs);
-    while (tw > r.width - 6 && fs > 10) { fs -= 2; tw = MeasureText(label, fs); }
-    DrawText(label, r.x + (r.width - tw) / 2, r.y + (r.height - fs) / 2, fs, RAYWHITE);
+    int fs = 24; int tw = ui_measure(label, fs);
+    while (tw > r.width - 6 && fs > 10) { fs -= 2; tw = ui_measure(label, fs); }
+    ui_text(label, r.x + (r.width - tw) / 2, r.y + (r.height - fs) / 2, fs, RAYWHITE);
     return hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
@@ -278,7 +281,7 @@ int main(int argc, char **argv) {
             /* SFX debug: single scrolling list of the bank on the left (mouse wheel / drag / buttons), events on the right */
             static float bank_scroll = 0; int nb = audio_bank_count();
             int row_h = 64, list_x = 16, list_y = 60, list_w = 640, list_h = VIEW_H * SCALE - 140;
-            DrawText("SOUND BANK - click to hear (wheel to scroll)", list_x, 16, 28, RAYWHITE);
+            ui_text("SOUND BANK - click to hear (wheel to scroll)", list_x, 16, 28, RAYWHITE);
             bank_scroll -= GetMouseWheelMove() * row_h * 2;
             Vector2 mp = GetMousePosition();
             if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && mp.x > list_x + list_w - 40 && mp.x < list_x + list_w && mp.y > list_y && mp.y < list_y + list_h)
@@ -296,8 +299,8 @@ int main(int argc, char **argv) {
             if (button((Rectangle){list_x, list_y + list_h + 8, 120, 48}, "UP", 0)) bank_scroll -= row_h * 4;
             if (button((Rectangle){list_x + 130, list_y + list_h + 8, 120, 48}, "DOWN", 0)) bank_scroll += row_h * 4;
             int ex0 = list_x + list_w + 40, ey0 = 16;
-            DrawText("GAME EVENT -> sound", ex0, ey0, 28, RAYWHITE);
-            DrawText("select an event, then click a sound", ex0, ey0 + 30, 20, LIGHTGRAY);
+            ui_text("GAME EVENT -> sound", ex0, ey0, 28, RAYWHITE);
+            ui_text("select an event, then click a sound", ex0, ey0 + 30, 20, LIGHTGRAY);
             for (int e = 0; e < SFX_COUNT; e++) {
                 char l[96]; int b = audio_event_bank(e);
                 snprintf(l, sizeof l, "%-14s %s", sfx_event_names[e], b >= 0 ? audio_bank_name(b) : "(builtin)");
@@ -309,19 +312,19 @@ int main(int argc, char **argv) {
             if (button((Rectangle){ex0 + 360, by2, 170, 52}, "TITLE", 0)) mode = 3;
         }
         int dev = debug_ui || (mode == 0 || mode == 1);      /* dev bar in map/sprite modes or when DEBUG is on */
-        if (dev) DrawText(status, 8, by + 4, 16, RAYWHITE);
-        if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; DrawText(t, (WIN_W - MeasureText(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); DrawText(t, (WIN_W - MeasureText(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
+        if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
+        if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; ui_text(t, (WIN_W - ui_measure(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); ui_text(t, (WIN_W - ui_measure(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
         if (mode == 3) g.vbl++;
         float r1 = by + 26, r2 = by + 72, bh = 40;
         if (mode == 2) {
             /* HUD over the top band of the playfield (the original's panel rows) */
             DrawRectangle(0, 0, WIN_W, 36 * SCALE / 2, (Color){0, 0, 0, 160});
             char h[128];
-            snprintf(h, sizeof h, "HELI %06d", g.heli.score); DrawText(h, 16, 10, 30, (Color){255, 238, 136, 255});
+            snprintf(h, sizeof h, "HELI %06d", g.heli.score); ui_text(h, 16, 10, 30, (Color){255, 238, 136, 255});
             for (int i = 0; i < g.heli.lives68; i++) DrawRectangle(16 + i * 18, 44, 12, 6, (Color){255, 238, 136, 255});
-            snprintf(h, sizeof h, "HI %06d", g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score); DrawText(h, (WIN_W - MeasureText(h, 30)) / 2, 10, 30, RAYWHITE);
-            snprintf(h, sizeof h, "JEEP %06d", g.jeep.score); DrawText(h, WIN_W - 16 - MeasureText(h, 30), 10, 30, (Color){136, 221, 255, 255});
-            if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; DrawText(t, (WIN_W - MeasureText(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
+            snprintf(h, sizeof h, "HI %06d", g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score); ui_text(h, (WIN_W - ui_measure(h, 30)) / 2, 10, 30, RAYWHITE);
+            snprintf(h, sizeof h, "JEEP %06d", g.jeep.score); ui_text(h, WIN_W - 16 - ui_measure(h, 30), 10, 30, (Color){136, 221, 255, 255});
+            if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
         }
         if (mode == 3) {
             if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
@@ -366,7 +369,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){700, r1, 70, bh}, "AIR", show_air)) { double s = scroll_pos; show_air ^= 1; load_level(map_lv); scroll_pos = s; }
             if (button((Rectangle){780, r1, 70, bh}, "RST", 0)) scroll_pos = 0;
             /* row 2: speed + scrub */
-            DrawText("SPEED", 120, r2 + 12, 16, LIGHTGRAY);
+            ui_text("SPEED", 120, r2 + 12, 16, LIGHTGRAY);
             if (button((Rectangle){190, r2, 48, bh}, "/2", 0)) speed /= 2;
             static const float presets[] = {0.25f, 0.5f, 1, 2, 4};
             for (int k = 0; k < 5; k++) {
@@ -389,7 +392,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){426, r1, 90, bh}, "FRAME >", 0) && L->nframes) sp_frame = (sp_frame + 1) % L->nframes;
             if (button((Rectangle){540, r1, 90, bh}, "ANIM", sp_anim)) sp_anim ^= 1;
             if (button((Rectangle){640, r1, 70, bh}, sp_zoom == 1 ? "x1" : sp_zoom == 2 ? "x2" : "x4", 0)) sp_zoom = sp_zoom == 4 ? 1 : sp_zoom * 2;
-            DrawText("PALETTE", 120, r2 + 12, 16, LIGHTGRAY);
+            ui_text("PALETTE", 120, r2 + 12, 16, LIGHTGRAY);
             if (button((Rectangle){216, r2, 60, bh}, "<", 0)) sp_pal = (sp_pal + N_PAL_SRC - 1) % N_PAL_SRC;
             if (button((Rectangle){282, r2, 60, bh}, ">", 0)) sp_pal = (sp_pal + 1) % N_PAL_SRC;
             for (int k = 0; k < 7; k++) {
