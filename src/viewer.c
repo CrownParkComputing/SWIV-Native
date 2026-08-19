@@ -37,10 +37,10 @@ static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras, 6 options */
 /* ---- options (options.txt) ---- */
-static struct { int sfx_vol, music_vol, fullscreen, scanlines, difficulty; } opt = { 8, 6, 0, 0, 1 };   /* difficulty 0 easy 1 normal 2 hard */
+static struct { int sfx_vol, music_vol, fullscreen, scanlines, difficulty, ingame_music; } opt = { 8, 6, 0, 0, 1, 0 };   /* difficulty 0 easy 1 normal 2 hard */
 static void options_apply(void) { audio_set_volumes(opt.sfx_vol / 10.0f, opt.music_vol / 10.0f); if (opt.fullscreen != IsWindowFullscreen()) ToggleFullscreen(); eng_difficulty_mode = opt.difficulty; }
-static void options_save(void) { FILE *f = fopen("options.txt", "w"); if (f) { fprintf(f, "sfx %d\nmusic %d\nfullscreen %d\nscanlines %d\ndifficulty %d\n", opt.sfx_vol, opt.music_vol, opt.fullscreen, opt.scanlines, opt.difficulty); fclose(f); } }
-static void options_load(void) { FILE *f = fopen("options.txt", "r"); char k[32]; int v; if (!f) return; while (fscanf(f, "%31s %d", k, &v) == 2) { if (!strcmp(k, "sfx")) opt.sfx_vol = v; else if (!strcmp(k, "music")) opt.music_vol = v; else if (!strcmp(k, "fullscreen")) opt.fullscreen = v; else if (!strcmp(k, "scanlines")) opt.scanlines = v; else if (!strcmp(k, "difficulty")) opt.difficulty = v; } fclose(f); }
+static void options_save(void) { FILE *f = fopen("options.txt", "w"); if (f) { fprintf(f, "sfx %d\nmusic %d\nfullscreen %d\nscanlines %d\ndifficulty %d\ningame_music %d\n", opt.sfx_vol, opt.music_vol, opt.fullscreen, opt.scanlines, opt.difficulty, opt.ingame_music); fclose(f); } }
+static void options_load(void) { FILE *f = fopen("options.txt", "r"); char k[32]; int v; if (!f) return; while (fscanf(f, "%31s %d", k, &v) == 2) { if (!strcmp(k, "sfx")) opt.sfx_vol = v; else if (!strcmp(k, "music")) opt.music_vol = v; else if (!strcmp(k, "fullscreen")) opt.fullscreen = v; else if (!strcmp(k, "scanlines")) opt.scanlines = v; else if (!strcmp(k, "difficulty")) opt.difficulty = v; else if (!strcmp(k, "ingame_music")) opt.ingame_music = v; } fclose(f); }
 /* front end (src/frontend.c): the title/attract/level-start/game-over sequence owns mode 3 and drives the
  * engine through FE_START_GAME / FE_LEVEL_INTRO / FE_PLAY; fe_game = the current game was started by it */
 static int fe_game = 0, fe_state = FE_ATTRACT, idle_vbl = 0, prev_joined_h = 0, prev_joined_j = 0, fe_req_sent = 0, level_base_px = 0;
@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
         if (++frame_no == test_go && mode == 2) { g.game_over160 = 1; autofire = 0; }
-        audio_update(); audio_music_play(&disk, (mode == 3 || mode == 2) ? fe_music() : NULL);
+        audio_update(); audio_music_play(&disk, mode == 3 ? fe_music() : mode == 2 ? (opt.ingame_music ? "AMTITUNE.MOD" : fe_music()) : NULL);
         if (mode == 6) {
             memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
         } else if (mode == 5) {
@@ -446,12 +446,14 @@ int main(int argc, char **argv) {
             ui_text("Difficulty", x0, y0 + 70 + 3 * rh, 26, (Color){255, 238, 136, 255});
             { static const char *DN[3] = { "EASY", "NORMAL", "HARD" }; for (int d = 0; d < 3; d++) if (button((Rectangle){x0 + 420 + d * 130, y0 + 60 + 3 * rh, 124, 48}, DN[d], opt.difficulty == d)) { opt.difficulty = d; options_apply(); } }
             ui_text("easy: half the enemies    hard: 1.5x aerial, 2x ground (applies from the next game)", x0, y0 + 110 + 3 * rh, 20, LIGHTGRAY);
-            ui_text("Controls", x0, y0 + 150 + 3 * rh, 26, (Color){255, 238, 136, 255});
-            ui_text("Port 2 helicopter: arrows + Space (or first gamepad: stick/d-pad, A/X/trigger fire)", x0, y0 + 190 + 3 * rh, 22, LIGHTGRAY);
-            ui_text("Port 1 jeep: WASD + Left Shift/Ctrl (or second gamepad)", x0, y0 + 220 + 3 * rh, 22, LIGHTGRAY);
-            ui_text("P = pause, ESC (while paused) = menu; touch: left half steer, right half fire", x0, y0 + 250 + 3 * rh, 22, LIGHTGRAY);
-            if (button((Rectangle){x0, y0 + 300 + 3 * rh, 170, 52}, "SAVE", 0)) options_save();
-            if (button((Rectangle){x0 + 180, y0 + 300 + 3 * rh, 170, 52}, "TITLE", 0)) { options_save(); mode = 3; }
+            ui_text("Title music in game", x0, y0 + 150 + 3 * rh, 26, (Color){255, 238, 136, 255});
+            if (button((Rectangle){x0 + 420, y0 + 140 + 3 * rh, 196, 48}, opt.ingame_music ? "ON" : "OFF", opt.ingame_music)) { opt.ingame_music ^= 1; }
+            ui_text("Controls", x0, y0 + 220 + 3 * rh, 26, (Color){255, 238, 136, 255});
+            ui_text("Port 2 helicopter: arrows + Space (or first gamepad: stick/d-pad, A/X/trigger fire)", x0, y0 + 260 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("Port 1 jeep: WASD + Left Shift/Ctrl (or second gamepad)", x0, y0 + 290 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("P = pause, ESC (while paused) = menu; touch: left half steer, right half fire", x0, y0 + 320 + 3 * rh, 22, LIGHTGRAY);
+            if (button((Rectangle){x0, y0 + 370 + 3 * rh, 170, 52}, "SAVE", 0)) options_save();
+            if (button((Rectangle){x0 + 180, y0 + 370 + 3 * rh, 170, 52}, "TITLE", 0)) { options_save(); mode = 3; }
         }
         static float extra_scroll = 0;
         if (mode == 5) {
