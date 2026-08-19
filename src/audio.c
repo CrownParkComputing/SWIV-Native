@@ -94,6 +94,10 @@ void audio_init(SwivDisk *d) {
         for (int i = 0; i < bank_n; i++) {
             int fr = 0; int16_t *pcm = sfx_bank_render(i, d, &fr);
             bank_pcm[i] = pcm; bank_frames[i] = fr; tune[i] = (Tune){ 1.0f, 1.0f, 4.0f };   /* default cap 4 s: the driver steals/ends endless voices in play */
+            if (pcm && fr > 0) {   /* single-voice effects render at 1/4 scale (one Paula channel): normalise quiet entries so hits/shots are audible next to 4-voice explosions */
+                int pk = 1; for (int k = 0; k < fr; k++) { int v = pcm[k] < 0 ? -pcm[k] : pcm[k]; if (v > pk) pk = v; }
+                if (pk < 20000) { float gsc = 20000.0f / pk; for (int k = 0; k < fr; k++) pcm[k] = (int16_t)(pcm[k] * gsc); }
+            }
             if (pcm && fr > 0) bank_rebuild(i);
         }
         audio_map_load(); audio_tune_load();
