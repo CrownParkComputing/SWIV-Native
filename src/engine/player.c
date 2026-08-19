@@ -38,7 +38,8 @@ static void set_rec(Obj *o, struct Player *p) { o->w[0] = 32; o->w[1] = (p == &g
 
 /* autofire option byte 12484(A6): bit7 set = fire on button RELEASE (the button bit is XORed with it). Not in the engine. */
 static const uint8_t g_autofire12484 = 0;
-static int g_shots12486;                 /* shots fired statistic */
+static long g_shots12486;                /* shots fired statistic (12486(A6)) */
+long player_shots_fired(void) { return g_shots12486; }
 static const int g_lives_step12524 = 4;  /* 12524(A6): lives are counted in -4 units */
 
 /* ---------------------------------------------------------------------------------------------------------------------

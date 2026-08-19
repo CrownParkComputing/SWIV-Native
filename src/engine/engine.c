@@ -27,10 +27,12 @@ static void render_push(int key, uint16_t gfx, int x, int y, uint8_t flags) {
 
 /* ---------- list ---------- */
 static void list_insert(Obj *o) {
-    /* kernel LAB_00E5: walk while node.prio > o.prio (unsigned), insert before the first <= */
-    Obj *n = head.next;
-    while (n != &head && (uint16_t)n->prio > (uint16_t)o->prio) n = n->next;
-    o->next = n; o->prev = n->prev; n->prev->next = o; n->prev = o;
+    /* kernel LAB_00E3..E5 ($200F7C): A2 = head; do A2 = A2->prev while (new.prio < A2->prio, unsigned); insert AFTER A2.
+     * Result: the list runs in ASCENDING priority (players 99 before enemies 100 before effects 101, collision 65534 and
+     * map 65535 last), and among equal priorities a new task goes after the existing ones. */
+    Obj *a2 = &head;
+    do { a2 = a2->prev; } while (a2 != &head && (uint16_t)o->prio < (uint16_t)a2->prio);
+    o->next = a2->next; o->prev = a2; a2->next->prev = o; a2->next = o;
 }
 static void list_remove(Obj *o) { o->prev->next = o->next; o->next->prev = o->prev; o->next = o->prev = NULL; }
 Obj *eng_first(void) { return head.next == &head ? NULL : head.next; }
@@ -236,7 +238,7 @@ int wait_onscreen_inert(Obj *o, int m) { while ((uint16_t)((o->y >> 16) - m) < g
 
 /* ---------- enemy init / death ---------- */
 void enemy_init(Obj *o, uint16_t gfx, uint16_t mask, int margin, int hp, int score, int threat) {
-    o->threat = threat; o->score = score; o->gfxset = gfx;
+    o->threat = threat; o->score = score; o->gfxset = gfx; g.stat_spawned12494++;   /* ADDQ.L #1,12494(A6) @ $216004 */
     gfx_acquire(o, gfx);
     wait_onscreen_inert(o, margin);
     box_register(o, mask);
@@ -252,6 +254,7 @@ void on_bullet_hit(Obj *o) {
     kill(o);
 }
 void kill(Obj *o) {
+    g.stat_destroyed12498++;                                                      /* ADDQ.L #1,12498(A6) @ $21608a */
     if (o->box.hits & 0x40) g.heli.score += o->score; else if (o->box.hits & 0x80) g.jeep.score += o->score;
     if (o->death376) eng_spawn(o, o->death376, 100);
     if (o->popup374) { Obj *c = eng_spawn(o, fx_popup, 100); if (c) c->w[0] = o->popup374; }

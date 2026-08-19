@@ -2,7 +2,8 @@
  * All controls are on-screen buttons (mouse or touch; keys are optional extras). */
 #include "swivdata.h"
 #include "engine/engine.h"
-extern void player_start(void); extern void player_vbl(void);
+#include "frontend.h"
+extern void player_start(void); extern void player_vbl(void); extern long player_shots_fired(void);
 extern void audio_init(SwivDisk *d); extern void audio_update(void); extern void audio_music_play(SwivDisk *d, const char *name);
 extern int audio_bank_count(void); extern const char *audio_bank_name(int i); extern const char *audio_bank_label(int i); extern void audio_bank_play(int i);
 extern int audio_event_bank(int ev); extern void audio_event_set(int ev, int bank); extern void audio_map_save(void);
@@ -34,6 +35,25 @@ static int game_on = 0; static int game_paused = 0; static int eng_level = 0; st
 static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras */
+/* front end (src/frontend.c): the title/attract/level-start/game-over sequence owns mode 3 and drives the
+ * engine through FE_START_GAME / FE_LEVEL_INTRO / FE_PLAY; fe_game = the current game was started by it */
+static int fe_game = 0, fe_state = FE_ATTRACT, idle_vbl = 0, prev_joined_h = 0, prev_joined_j = 0;
+typedef struct { int score, lives68, power102, level100, rate98, hiscore80, joined; } Carry; static Carry carry[2];
+static void fe_keys(void) {      /* keyboard -> frontend (hi-score name entry, F-keys for the options screen, Esc) */
+    int c; while ((c = GetCharPressed()) > 0) if (c < 0x80) fe_key(c);
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) fe_key(FE_KEY_RETURN);
+    if (IsKeyPressed(KEY_BACKSPACE)) fe_key(FE_KEY_BACKSPACE);
+    if (IsKeyPressed(KEY_ESCAPE)) fe_key(FE_KEY_ESC);
+    for (int k = 0; k < 10; k++) if (IsKeyPressed(KEY_F1 + k) && k != 1) fe_key(FE_KEY_F1 + k);   /* F2 = screenshot */
+    if (IsKeyPressed(KEY_F11)) fe_key(FE_KEY_HELP);
+}
+static FeHud hud_of(const struct Player *p, int intro) {
+    FeHud h = { -p->lives68 / 4, p->power102, p->score, FE_HUD_IDLE };
+    if (p->joined55) h.mode = intro ? FE_HUD_READY : (p->alive || p->lives68 != 0 ? FE_HUD_STATUS : FE_HUD_IDLE);
+    return h;
+}
+static int fire_held_heli(void) { return IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_ENTER) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT); }
+static int fire_held_jeep(void) { return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_MIDDLE_RIGHT); }
 
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
@@ -113,18 +133,6 @@ static void draw_map_frame(Color *out) {
         }
         for (int x = 0; x < VIEW_W; x++)
             out[y * VIEW_W + x] = (sy >= 0 && sy < canvas.h) ? cols[canvas.px[(size_t)sy * canvas.w + x] & 15] : BLACK;
-    }
-}
-
-/* ---- title (COVER.RAW: 320x256, 4 planes sequential, 16 x RGB12 palette at the end) ---- */
-static Color *cover;
-static void decode_cover(void) {
-    int i = swiv_find(&disk, "COVER.RAW"); uint32_t n; const uint8_t *d; if (i < 0 || !(d = swiv_load(&disk, i, &n)) || n < 40992) return;
-    cover = malloc(sizeof(Color) * VIEW_W * VIEW_H); Color pal[16];
-    for (int k = 0; k < 16; k++) { uint16_t v = (d[n - 32 + 2 * k] << 8) | d[n - 32 + 2 * k + 1]; swiv_rgb12(v, &pal[k].r, &pal[k].g, &pal[k].b); pal[k].a = 255; }
-    for (int y = 0; y < VIEW_H; y++) for (int x = 0; x < VIEW_W; x++) {
-        int v = 0; for (int pl = 0; pl < 4; pl++) if (d[pl * 40 * 256 + y * 40 + (x >> 3)] & (0x80 >> (x & 7))) v |= 1 << pl;
-        cover[y * VIEW_W + x] = pal[v];
     }
 }
 
@@ -232,6 +240,7 @@ int main(int argc, char **argv) {
       if (FileExists("assets/retro_recomp_logo.png")) { rr_logo = LoadTexture("assets/retro_recomp_logo.png"); SetTextureFilter(rr_logo, TEXTURE_FILTER_BILINEAR); }
       for (int i = 0; fonts[i] && !ui_font_ok; i++) if (FileExists(fonts[i])) { ui_font = LoadFontEx(fonts[i], 40, NULL, 0); ui_font_ok = ui_font.texture.id != 0; if (ui_font_ok) SetTextureFilter(ui_font.texture, TEXTURE_FILTER_BILINEAR); } }
     if (!shot) audio_init(&disk);
+    fe_init(&disk); fe_start_title();
     SetTargetFPS(50);
     img = GenImageColor(VIEW_W, VIEW_H, BLACK); tex = LoadTextureFromImage(img);
     Color *buf = malloc(sizeof(Color) * VIEW_W * VIEW_H);
@@ -240,7 +249,7 @@ int main(int argc, char **argv) {
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
-        audio_update(); audio_music_play(&disk, mode == 3 ? "AMTITUNE.MOD" : NULL);
+        audio_update(); audio_music_play(&disk, (mode == 3 || mode == 2) ? fe_music() : NULL);
         if (mode == 5) {
             memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
             snprintf(status, sizeof status, "EXTRAS: Hall of Light media (amiga.abime.net)");
@@ -248,15 +257,36 @@ int main(int argc, char **argv) {
             memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
             snprintf(status, sizeof status, "SFX DEBUG: click a sound to hear it; select an event (right) then a sound to assign; SAVE writes sfxmap.txt");
         } else if (mode == 3) {
-            if (!cover) decode_cover();
-            if (cover) memcpy(buf, cover, sizeof(Color) * VIEW_W * VIEW_H); else memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
-            /* original: port 2 = helicopter, port 1 = jeep; either fire starts the game with that vehicle, the other can join any time */
-            int start_heli = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER), start_jeep = IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_LEFT_CONTROL);
-            { int d1 = 0, d2 = 0, f = 0; pad_read(0, &d1, &d2, &f, &start_heli); d1 = d2 = f = 0; pad_read(1, &d1, &d2, &f, &start_jeep); }
+            /* FRONT END: LAB_00B2 attract loop in src/frontend.c.  Port 2 = helicopter (arrows/space/pad 0/tap right),
+             * port 1 = jeep (WASD/shift/pad 1/tap left); either fire starts, the other can join any time. */
+            int start_heli = fire_held_heli(), start_jeep = fire_held_jeep();
             Vector2 mp = GetMousePosition(); if (GetTouchPointCount() > 0) mp = GetTouchPosition(0);
-            if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
-            if (start_heli || start_jeep) { mode = 2; game_on = 0; pending_join_heli = start_heli; pending_join_jeep = start_jeep; }
-            snprintf(status, sizeof status, "S.W.I.V.  (C) 1991 The Sales Curve / Storm  --  native");
+            if ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
+            fe_keys();
+            int r = fe_update(start_heli, start_jeep ? 0x40 : 0);
+            if (r == FE_START_GAME) {                 /* LAB_01B5: start the engine; the joining player is the one who pressed fire */
+                eng_init(&disk, 0); player_start(); eng_level = 0; map_lv = 0; game_on = 1; fe_game = 1; idle_vbl = 0;
+                pending_join_heli = start_heli || !start_jeep; pending_join_jeep = start_jeep;
+                g.heli.joined55 = pending_join_heli; g.jeep.joined55 = pending_join_jeep;
+                if (pending_join_heli) fe_player_joined(0); if (pending_join_jeep) fe_player_joined(1);
+                prev_joined_h = g.heli.joined55; prev_joined_j = g.jeep.joined55; memset(carry, 0, sizeof carry);
+                fe_level_intro(0); r = FE_LEVEL_INTRO;
+            }
+            fe_state = r;
+            fe_render(buf);
+            if (r == FE_LEVEL_INTRO && fe_game) {     /* "GET READY!" (LAB_055B/LAB_0597) for the joined players */
+                FeHud h = hud_of(&g.heli, 1), j = hud_of(&g.jeep, 1); fe_draw_hud(buf, &h, &j);
+                /* a second player may still join during the intro */
+                if (!g.heli.joined55 && start_heli && fe_join_allowed()) { g.heli.joined55 = 1; fe_player_joined(0); }
+                if (!g.jeep.joined55 && start_jeep && fe_join_allowed()) { g.jeep.joined55 = 1; fe_player_joined(1); }
+            } else if (r == FE_PLAY && fe_game) {
+                mode = 2; game_paused = 0;
+            } else {
+                FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0); h.mode = j.mode = FE_HUD_IDLE;
+                if (fe_game && game_on) { game_on = 0; }
+                fe_draw_hud(buf, &h, &j);
+            }
+            snprintf(status, sizeof status, "S.W.I.V.  (C) 1991 The Sales Curve / Storm  --  native  --  front end state %d", r);
         } else if (mode == 2) {
             if (!game_on) { eng_init(&disk, map_lv < 0 ? 0 : map_lv); player_start(); game_on = 1; eng_level = map_lv < 0 ? 0 : map_lv; g.heli.joined55 = pending_join_heli; g.jeep.joined55 = pending_join_jeep; }
             int dx = 0, dy = 0, fire = 0;
@@ -284,7 +314,42 @@ int main(int argc, char **argv) {
             if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL)) f2 = 1;
             pad_read(1, &dx2, &dy2, &f2, NULL);   /* second real gamepad = jeep */
             player2_input_dx = dx2; player2_input_dy = dy2; player2_input_fire = f2;
-            if (!game_paused) { eng_vbl(); player_vbl(); }
+            if (!game_paused) {
+                int ja = fe_join_allowed();
+                eng_vbl(); player_vbl();
+                if (fe_game) {
+                    /* LAB_055A join gate (credits / please wait) + credit accounting */
+                    if (g.heli.joined55 && !prev_joined_h) { if (ja) fe_player_joined(0); else g.heli.joined55 = 0; }
+                    if (g.jeep.joined55 && !prev_joined_j) { if (ja) fe_player_joined(1); else g.jeep.joined55 = 0; }
+                    prev_joined_h = g.heli.joined55; prev_joined_j = g.jeep.joined55;
+                    fe_keys();
+                    int r = fe_update(fire_held_heli() || player_input_fire, (fire_held_jeep() || player2_input_fire) ? 0x40 : 0);
+                    /* LAB_01B7: nobody active -> 100 VBLs grace (300 with credits left) -> game over */
+                    if (!g.heli.joined55 && !g.jeep.joined55) idle_vbl++; else idle_vbl = 0;
+                    int level_done = (int16_t)(g.scroll3530 - (0xE9C0 - eng_map.height)) <= 0;
+                    if (r == FE_PLAY && idle_vbl == (fe_join_allowed() ? 300 : 100)) {
+                        FeStats st = { 0, player_shots_fired(), g.stat_destroyed12498, g.stat_spawned12494, g.stat_tokens12490,
+                                       (int)((long)(uint16_t)(0xE9C0 - g.scroll3530) * 100 / 0x68c1), g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score, g.jeep.hiscore80 > g.jeep.score ? g.jeep.hiscore80 : g.jeep.score };
+                        fe_game_over(&st);
+                    } else if (r == FE_PLAY && level_done && idle_vbl == 0) {
+                        if (eng_level < 6) fe_level_intro(eng_level + 1); else fe_game_completed();
+                    }
+                    if (r != FE_PLAY) {
+                        /* the fade-out has finished: next level, ending or game-over statistics (frontend screens) */
+                        if (r == FE_LEVEL_INTRO) {
+                            struct Player *pl[2] = { &g.heli, &g.jeep };
+                            for (int k = 0; k < 2; k++) carry[k] = (Carry){ pl[k]->score, pl[k]->lives68, pl[k]->power102, pl[k]->level100, pl[k]->rate98, pl[k]->hiscore80, pl[k]->joined55 != 0 };
+                            eng_level++; map_lv = eng_level; eng_init(&disk, eng_level); player_start();
+                            g.heli.joined55 = carry[0].joined; g.jeep.joined55 = carry[1].joined;
+                            /* the managers (LAB_055D) reset lives/score on their first tick: run it, then carry the game on */
+                            eng_vbl(); player_vbl(); eng_vbl(); player_vbl();
+                            for (int k = 0; k < 2; k++) if (carry[k].joined) { pl[k]->score = carry[k].score; pl[k]->lives68 = carry[k].lives68; pl[k]->power102 = carry[k].power102; pl[k]->level100 = carry[k].level100; pl[k]->rate98 = carry[k].rate98; pl[k]->hiscore80 = carry[k].hiscore80; }
+                            prev_joined_h = g.heli.joined55; prev_joined_j = g.jeep.joined55;
+                        } else game_on = 0;
+                        mode = 3;
+                    }
+                }
+            }
             /* render: terrain window then sprites (descending key) */
             static uint8_t idx[VIEW_W * VIEW_H]; static uint16_t rowpal[VIEW_H][16];
             static SwivCanvas terrain; static int terrain_lv = -1;
@@ -321,6 +386,8 @@ int main(int argc, char **argv) {
                 static const Color SPRPAL[2][4] = { { {0,0,0,0}, {255,255,255,255}, {153,153,153,255}, {136,0,0,255} }, { {0,0,0,0}, {255,255,255,255}, {153,153,153,255}, {255,136,0,255} } };
                 for (int i = 0; i < VIEW_W * VIEW_H; i++) { uint8_t v = spr[i]; if (v == 255) continue; int pair = (v >> 4) & 1, ci = v & 15; if (ci && ci < 4) buf[i] = SPRPAL[pair][ci]; }
             }
+            if (fe_game) { int dk = fe_play_darkness(); if (dk) { int k = 256 - dk; for (int i = 0; i < VIEW_W * VIEW_H; i++) { buf[i].r = (uint8_t)(buf[i].r * k >> 8); buf[i].g = (uint8_t)(buf[i].g * k >> 8); buf[i].b = (uint8_t)(buf[i].b * k >> 8); } } }
+            { FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0); fe_draw_hud(buf, &h, &j); }   /* LAB_0216: the original's status line (plane 5 + copper gradient) */
             int nobj = 0; FOR_EACH_OBJ(ob) nobj++;
             snprintf(status, sizeof status, "PLAY level %d %s   score %06d   objects %d   scroll %04x   tick %d%s",
                      eng_level + 1, eng_map.pam_name, g.heli.score, nobj, g.scroll3530, g.tick, game_paused ? "   PAUSED" : "");
@@ -415,20 +482,9 @@ int main(int argc, char **argv) {
         }
         int dev = (debug_ui || (mode == 0 || mode == 1)) && mode != 5;      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
-        if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; ui_text(t, (WIN_W - ui_measure(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); ui_text(t, (WIN_W - ui_measure(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
-        if (mode == 3) g.vbl++;
         float r1 = by + 26, r2 = by + 72, bh = 40;
         if (mode == 2) {
-            /* HUD over the top band of the playfield (the original's panel rows) */
-            DrawRectangle(0, 0, WIN_W, 36 * SCALE / 2, (Color){0, 0, 0, 160});
-            char h[128];
-            snprintf(h, sizeof h, "PLAYER 1  %06d", g.heli.score); ui_text(h, 16, 10, 30, (Color){255, 238, 136, 255});
-            for (int i = 0; i < g.heli.lives68; i++) DrawRectangle(16 + i * 18, 44, 12, 6, (Color){255, 238, 136, 255});
-            snprintf(h, sizeof h, "HI %06d", g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score); ui_text(h, (WIN_W - ui_measure(h, 30)) / 2, 10, 30, RAYWHITE);
-            if (g.jeep.joined55) snprintf(h, sizeof h, "PLAYER 2  %06d", g.jeep.score); else snprintf(h, sizeof h, "PLAYER 2  PRESS FIRE"); ui_text(h, WIN_W - 16 - ui_measure(h, 30), 10, 30, (Color){136, 221, 255, 255});
-            for (int i = 0; i < g.jeep.lives68 && g.jeep.joined55; i++) DrawRectangle(WIN_W - 28 - i * 18, 44, 12, 6, (Color){136, 221, 255, 255});
             if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
-            if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
         }
         if (mode == 3) {
             if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
@@ -442,24 +498,24 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;
                 if (button((Rectangle){224, r1, 100, bh}, "SFX", 0)) mode = 4;
-                if (button((Rectangle){332, r1, 100, bh}, "PLAY", 0)) { mode = 2; game_on = 0; }
+                if (button((Rectangle){332, r1, 100, bh}, "PLAY", 0)) { mode = 2; game_on = 0; fe_game = 0; }
             }
         }
         if (mode != 3 && (dev || mode == 2)) {
             if (dev) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
                 if (button((Rectangle){8, r2, 100, bh}, "SPRITES", mode == 1)) mode = 1;
-                if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_on = 0; } mode = 2; }
+                if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_on = 0; } mode = 2; fe_game = 0; }
                 if (mode != 2 && button((Rectangle){WIN_W - 108, r2, 100, bh}, "TITLE", mode == 3)) mode = 3;
             }
         }
         if (mode == 2) {
             if (IsKeyPressed(KEY_P)) game_paused ^= 1;
-            if (game_paused && IsKeyPressed(KEY_ESCAPE)) { mode = 3; game_on = 0; game_paused = 0; }
+            if (game_paused && IsKeyPressed(KEY_ESCAPE)) { if (fe_game) { game_paused = 0; fe_key(FE_KEY_ESC); } else { mode = 3; game_on = 0; game_paused = 0; } }
             if (dev) {
                 if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
                 if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
-                if (button((Rectangle){224, r1, 100, bh}, "QUIT", 0)) { mode = 3; game_on = 0; }
+                if (button((Rectangle){224, r1, 100, bh}, "QUIT", 0)) { mode = 3; game_on = 0; if (fe_game) { fe_game = 0; fe_start_title(); } }
                 for (int k = 0; k < 7; k++) {
                     char l[4]; snprintf(l, 4, "%d", k + 1);
                     if (button((Rectangle){120 + k * 52, r2, 48, bh}, l, eng_level == k)) { map_lv = k; eng_init(&disk, k); player_start(); eng_level = k; }

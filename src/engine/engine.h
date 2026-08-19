@@ -70,6 +70,7 @@ typedef struct {
     int clock202, clock204;   /* generation clocks (-1418 compares obj time12 against *clock) */
     int threat156;           /* sum of live threat */
     int game_over160, paused165, alternate168, smart_bomb169, difficulty182, missile_budget206;
+    long stat_spawned12494, stat_destroyed12498, stat_tokens12490;   /* game-over statistics (LAB_00B3): enemies spawned / destroyed / tokens */
     uint16_t scroll3530, scroll3542, cursor3586;  /* map scroll (counts down), as u16 like the original */
     uint32_t rng11172;
     int boss140; uint8_t flags166;
