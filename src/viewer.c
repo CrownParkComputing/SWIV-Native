@@ -32,7 +32,7 @@ static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_groun
 static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
-static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title */
+static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras */
 
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
@@ -105,6 +105,37 @@ static void decode_cover(void) {
         int v = 0; for (int pl = 0; pl < 4; pl++) if (d[pl * 40 * 256 + y * 40 + (x >> 3)] & (0x80 >> (x & 7))) v |= 1 << pl;
         cover[y * VIEW_W + x] = pal[v];
     }
+}
+
+/* ---- extras: Hall of Light media (extras/hol) ---- */
+#include <dirent.h>
+typedef struct { const char *title; const char *dir; const char *ext; } ExtraCat;
+static const ExtraCat EXTRA_CATS[] = { {"Screenshots", "extras/hol/screen", ".png"}, {"Box", "extras/hol/box", ".jpg"}, {"Disks", "extras/hol/disk", ".jpg"},
+    {"Scans & adverts", "extras/hol/misc", ".jpg"}, {"Manual", "extras/hol/manual_pages", ".png"}, {"Map", "extras/hol/map", ".png"}, {"Cheats", NULL, NULL} };
+#define N_EXTRA_CATS 7
+static char extra_files[256][160]; static int extra_n, extra_cat = 0, extra_idx = 0; static Texture2D extra_tex; static int extra_loaded_idx = -1, extra_loaded_cat = -1;
+static char cheats_text[4096];
+static int cmpstr(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
+static void extras_scan(int cat) {
+    extra_n = 0; extra_idx = 0;
+    if (!EXTRA_CATS[cat].dir) { FILE *f = fopen("extras/hol/cheats.txt", "r"); if (f) { size_t n = fread(cheats_text, 1, sizeof cheats_text - 1, f); cheats_text[n] = 0; fclose(f); } return; }
+    DIR *d = opendir(EXTRA_CATS[cat].dir); if (!d) return; struct dirent *e;
+    while ((e = readdir(d)) && extra_n < 256) { const char *n = e->d_name; size_t l = strlen(n); if (l > 4 && !strcasecmp(n + l - 4, EXTRA_CATS[cat].ext)) snprintf(extra_files[extra_n++], 160, "%s/%s", EXTRA_CATS[cat].dir, n); }
+    closedir(d); qsort(extra_files, extra_n, 160, cmpstr);
+    /* natural order for numbered names: sort by the number before the extension */
+    for (int i = 1; i < extra_n; i++) for (int j = i; j > 0; j--) {
+        const char *a = extra_files[j - 1], *b = extra_files[j]; const char *pa = strrchr(a, '_'), *pb = strrchr(b, '_');
+        int na = pa ? atoi(pa + 1 + strspn(pa + 1, "abcdefghijklmnopqrstuvwxyz")) : 0, nb = pb ? atoi(pb + 1 + strspn(pb + 1, "abcdefghijklmnopqrstuvwxyz")) : 0;
+        const char *da = strrchr(a, '-'), *db = strrchr(b, '-'); int pa2 = da ? atoi(da + 1) : 0, pb2 = db ? atoi(db + 1) : 0;
+        if (na > nb || (na == nb && pa2 > pb2)) { char t[160]; memcpy(t, extra_files[j - 1], 160); memcpy(extra_files[j - 1], extra_files[j], 160); memcpy(extra_files[j], t, 160); } else break;
+    }
+}
+static void extras_load(void) {
+    if (extra_loaded_idx == extra_idx && extra_loaded_cat == extra_cat) return;
+    if (extra_tex.id) UnloadTexture(extra_tex);
+    extra_tex = (Texture2D){0};
+    if (extra_n) { extra_tex = LoadTexture(extra_files[extra_idx]); SetTextureFilter(extra_tex, TEXTURE_FILTER_BILINEAR); }
+    extra_loaded_idx = extra_idx; extra_loaded_cat = extra_cat;
 }
 
 /* ---- sprites ---- */
@@ -188,7 +219,10 @@ int main(int argc, char **argv) {
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
         audio_update(); audio_music_play(&disk, mode == 3 ? "AMTITUNE.MOD" : NULL);
-        if (mode == 4) {
+        if (mode == 5) {
+            memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
+            snprintf(status, sizeof status, "EXTRAS: Hall of Light media (amiga.abime.net)");
+        } else if (mode == 4) {
             memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
             snprintf(status, sizeof status, "SFX DEBUG: click a sound to hear it; select an event (right) then a sound to assign; SAVE writes sfxmap.txt");
         } else if (mode == 3) {
@@ -280,7 +314,40 @@ int main(int argc, char **argv) {
         DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, 0, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
         int by = VIEW_H * SCALE;
         DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
-                if (mode == 4) {
+                static float extra_scroll = 0;
+        if (mode == 5) {
+            static int extra_init = 0; if (!extra_init) { extras_scan(extra_cat); extra_init = 1; }
+            int cx = 16;
+            for (int c = 0; c < N_EXTRA_CATS; c++) { int w = ui_measure(EXTRA_CATS[c].title, 22) + 28; if (button((Rectangle){cx, 12, w, 44}, EXTRA_CATS[c].title, extra_cat == c)) { extra_cat = c; extras_scan(c); extra_scroll = 0; } cx += w + 8; }
+            if (button((Rectangle){WIN_W - 120, 12, 104, 44}, "TITLE", 0)) mode = 3;
+            int top = 70, avail_h = VIEW_H * SCALE + BAR_H - top - 16;
+            if (!EXTRA_CATS[extra_cat].dir) {
+                /* cheats text, wrapped */
+                extra_scroll -= GetMouseWheelMove() * 40; if (extra_scroll < 0) extra_scroll = 0;
+                BeginScissorMode(0, top, WIN_W, avail_h);
+                float y = top - extra_scroll; const char *t = cheats_text; char line[512];
+                while (*t) { const char *nl = strchr(t, '\n'); size_t len = nl ? (size_t)(nl - t) : strlen(t); if (len > 500) len = 500; memcpy(line, t, len); line[len] = 0;
+                    /* wrap at ~100 chars */ char *w = line; while (*w) { size_t l2 = strlen(w); if (l2 > 105) { size_t cut = 105; while (cut > 60 && w[cut] != ' ') cut--; char sv = w[cut]; w[cut] = 0; ui_text(w, 24, y, 22, RAYWHITE); w[cut] = sv; w += cut + (sv == ' '); } else { ui_text(w, 24, y, 22, RAYWHITE); w += l2; } y += 30; }
+                    if (len == 0) y += 12; t = nl ? nl + 1 : t + len; }
+                EndScissorMode();
+            } else {
+                extras_load();
+                if (extra_n == 0) ui_text("(nothing downloaded here)", 24, top + 20, 24, LIGHTGRAY);
+                else {
+                    float sc = (float)(WIN_W - 32) / extra_tex.width; if (extra_tex.height * sc > avail_h - 70) sc = (float)(avail_h - 70) / extra_tex.height;
+                    if (extra_cat == 5) { /* tall map: scroll vertically */ sc = (float)(WIN_W - 32) / extra_tex.width; if (sc > 3) sc = 3; extra_scroll -= GetMouseWheelMove() * 200; float maxs = extra_tex.height * sc - (avail_h - 70); if (maxs < 0) maxs = 0; if (extra_scroll < 0) extra_scroll = 0; if (extra_scroll > maxs) extra_scroll = maxs;
+                        BeginScissorMode(0, top, WIN_W, avail_h - 70); DrawTextureEx(extra_tex, (Vector2){(WIN_W - extra_tex.width * sc) / 2, top - extra_scroll}, 0, sc, WHITE); EndScissorMode(); }
+                    else DrawTextureEx(extra_tex, (Vector2){(WIN_W - extra_tex.width * sc) / 2, top}, 0, sc, WHITE);
+                    char l[64]; snprintf(l, sizeof l, "%d / %d", extra_idx + 1, extra_n);
+                    int by3 = top + avail_h - 56;
+                    if (button((Rectangle){WIN_W / 2 - 200, by3, 120, 48}, "<", 0)) { extra_idx = (extra_idx + extra_n - 1) % extra_n; extra_scroll = 0; }
+                    ui_text(l, WIN_W / 2 - ui_measure(l, 24) / 2, by3 + 12, 24, RAYWHITE);
+                    if (button((Rectangle){WIN_W / 2 + 80, by3, 120, 48}, ">", 0)) { extra_idx = (extra_idx + 1) % extra_n; extra_scroll = 0; }
+                    if (IsKeyPressed(KEY_RIGHT)) { extra_idx = (extra_idx + 1) % extra_n; extra_scroll = 0; } if (IsKeyPressed(KEY_LEFT)) { extra_idx = (extra_idx + extra_n - 1) % extra_n; extra_scroll = 0; }
+                }
+            }
+        }
+        if (mode == 4) {
             /* SFX debug: one row per game trigger: trigger name, assigned sound (short description) below, < > to change, tuning */
             static float sc = 0; int nb = audio_bank_count(); int x0 = 16, y0 = 16, row_h = 64, list_y = y0 + 44, list_h = VIEW_H * SCALE - 130;
             ui_text("SOUND EFFECTS - per game trigger: pick the sound, adjust pitch / volume / length, SAVE", x0, y0, 26, RAYWHITE);
@@ -314,7 +381,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){x0, by2, 170, 52}, "SAVE", 0)) { audio_tune_save(); audio_map_save(); }
             if (button((Rectangle){x0 + 180, by2, 170, 52}, "TITLE", 0)) mode = 3;
         }
-        int dev = debug_ui || (mode == 0 || mode == 1);      /* dev bar in map/sprite modes or when DEBUG is on */
+        int dev = (debug_ui || (mode == 0 || mode == 1)) && mode != 5;      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
         if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; ui_text(t, (WIN_W - ui_measure(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); ui_text(t, (WIN_W - ui_measure(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
         if (mode == 3) g.vbl++;
@@ -332,6 +399,7 @@ int main(int argc, char **argv) {
         }
         if (mode == 3) {
             if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
+            if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
             if (debug_ui) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;

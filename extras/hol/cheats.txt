@@ -1,0 +1,20 @@
+ECS / OCS
+Start the game and press ‘P’ to pause. Type “NCC-1701” and then any key except ‘P’. The screen will flash blue several times and you now have unlimited lives. Press ‘P’ to unpause and return to the game.
+When you destroy a goosecopter, it will split into 3 power up icons which cycle between 4 different symbols. Each time you shoot the icon twice it will change to a new symbol. If you shoot it 100 times (so it changes symbols 50 times) it will be replaced with a yellow star. If you collect the star, you will gain super fast 8 way fire!
+Conversion info
+Acorn Archimedes: 2 screens
+Amstrad/Schneider CPC464/664/6128: 2 screens
+Atari ST/E: 2 screens
+Commodore C64/128: 2 screens
+MSX 1/2: 2 screens
+Sinclair ZX Spectrum 48/128/+2/+3 – Timex TS2068/TC2068/TC2048: 2 screens
+Acorn Archimedes
+Amstrad/Schneider CPC464/664/6128
+Atari ST/E
+Commodore C64/128
+MSX 1/2
+Nintendo Game Boy Color
+No conversion screens found.
+Sinclair ZX Spectrum 48/128/+2/+3 – Timex TS2068/TC2068/TC2048
+Site
+Link
