@@ -16,6 +16,7 @@ extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #define VIEW_W 320
 #define VIEW_H 256
 #define SCALE 4
+#define MAP_START 96   /* the game starts with map y 96 at the screen bottom (first 96 px are never shown) */
 #define BAR_H 120                 /* control bar below the view */
 #define WIN_W (VIEW_W * SCALE)
 #define WIN_H (VIEW_H * SCALE + BAR_H)
@@ -72,7 +73,7 @@ static void load_level(int lv) {
             swiv_blit_gfx(&disk, &canvas, r->gfx, r->x, map.height + SWIV_MARGIN - r->y);
         }
     }
-    map_lv = lv; scroll_pos = 0;
+    map_lv = lv; scroll_pos = MAP_START;
 }
 static void draw_map_frame(Color *out) {
     int top = map.height + SWIV_MARGIN - (int)scroll_pos - VIEW_H;
@@ -256,7 +257,7 @@ int main(int argc, char **argv) {
                      eng_level + 1, eng_map.pam_name, g.heli.score, nobj, g.scroll3530, g.tick, game_paused ? "   PAUSED" : "");
         } else if (mode == 0) {
             if (!paused) scroll_pos += speed;
-            if (scroll_pos < 0) scroll_pos = 0;
+            if (scroll_pos < MAP_START) scroll_pos = MAP_START;
             if (scroll_pos > map.height) scroll_pos = map.height;
             draw_map_frame(buf);
             snprintf(status, sizeof status, "MAP %d %s   scroll %.0f / %d   speed %.4g px/frame%s",
@@ -367,7 +368,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){500, r1, 90, bh}, paused ? "PLAY" : "PAUSE", paused)) paused ^= 1;
             if (button((Rectangle){600, r1, 90, bh}, "GROUND", show_ground)) { double s = scroll_pos; show_ground ^= 1; load_level(map_lv); scroll_pos = s; }
             if (button((Rectangle){700, r1, 70, bh}, "AIR", show_air)) { double s = scroll_pos; show_air ^= 1; load_level(map_lv); scroll_pos = s; }
-            if (button((Rectangle){780, r1, 70, bh}, "RST", 0)) scroll_pos = 0;
+            if (button((Rectangle){780, r1, 70, bh}, "RST", 0)) scroll_pos = MAP_START;
             /* row 2: speed + scrub */
             ui_text("SPEED", 120, r2 + 12, 16, LIGHTGRAY);
             if (button((Rectangle){190, r2, 48, bh}, "/2", 0)) speed /= 2;
