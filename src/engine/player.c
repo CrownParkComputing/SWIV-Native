@@ -70,7 +70,7 @@ static void bullet_add(PBullet *tbl, int x, int y, int dx, int dy, uint16_t gfx,
     if (i == 30) return;
     PBullet *b = &tbl[i];
     g_shots12486++;
-    b->state = -1; b->gfx = gfx; b->dx = dx; b->dy = dy; b->x = x; b->y = y;
+    g.stat_shots++; b->state = -1; b->gfx = gfx; b->dx = dx; b->dy = dy; b->x = x; b->y = y;
     b->box = eng_extbox_alloc();                                   /* LAB_053F: hw=hh=8, hits=0, link */
     if (b->box) { b->box->hw = b->box->hh = 8; b->box->mask = vehicle ? 0x8081 : 0x8041; b->box->hits = 0; b->box->x = x; b->box->y = y; }
 }

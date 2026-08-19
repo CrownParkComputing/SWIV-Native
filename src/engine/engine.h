@@ -76,6 +76,7 @@ typedef struct {
     int boss140; uint8_t flags166;
     int render_gate155;
     int32_t jeep_limit3558;
+    int stat_shots, stat_hits;   /* native stats: player shots fired / enemy hits landed */
     /* respawn / bonus-zone globals used by JEEPHELI#23/#31/#43 and MEDTANK dust */
     int g3548, g3550, g3552, g3554, g3556; int zone150, zone152, zone154; int flag3615, flag3616;
     /* player records */
