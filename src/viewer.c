@@ -26,7 +26,7 @@ extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #define N_AMPROG_PAL 11
 
 static SwivDisk disk;
-static Font ui_font; static int ui_font_ok;
+static Font ui_font; static int ui_font_ok; static Texture2D rr_logo;
 static void ui_text(const char *t, int x, int y, int fs, Color c) { if (ui_font_ok) DrawTextEx(ui_font, t, (Vector2){(float)x, (float)y}, (float)fs, 1, c); else DrawText(t, x, y, fs, c); }
 static int ui_measure(const char *t, int fs) { return ui_font_ok ? (int)MeasureTextEx(ui_font, t, (float)fs, 1).x : MeasureText(t, fs); }
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
@@ -209,6 +209,7 @@ int main(int argc, char **argv) {
     if (swiv_open(&disk, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
     InitWindow(WIN_W, WIN_H, "SWIV native viewer"); SetExitKey(KEY_NULL);
     { const char *fonts[] = { "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/noto/NotoSans-Regular.ttf", NULL };
+      if (FileExists("assets/retro_recomp_logo.png")) { rr_logo = LoadTexture("assets/retro_recomp_logo.png"); SetTextureFilter(rr_logo, TEXTURE_FILTER_BILINEAR); }
       for (int i = 0; fonts[i] && !ui_font_ok; i++) if (FileExists(fonts[i])) { ui_font = LoadFontEx(fonts[i], 40, NULL, 0); ui_font_ok = ui_font.texture.id != 0; if (ui_font_ok) SetTextureFilter(ui_font.texture, TEXTURE_FILTER_BILINEAR); } }
     if (!shot) audio_init(&disk);
     SetTargetFPS(50);
@@ -418,8 +419,9 @@ int main(int argc, char **argv) {
             if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
             if (button((Rectangle){WIN_W - 364, r1, 120, bh}, "QUIT", 0)) { CloseWindow(); return 0; }
             { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        ";
+              int lw = 0; if (rr_logo.id) { float lsc = (BAR_H - 16) / (float)rr_logo.height; lw = (int)(rr_logo.width * lsc) + 24; DrawTextureEx(rr_logo, (Vector2){8, by + 8}, 0, lsc, WHITE); }
               int fs = 26, w = ui_measure(msg, fs); mx -= 1.5f; if (mx < -w) mx += w;
-              BeginScissorMode(0, r2, WIN_W, bh); ui_text(msg, (int)mx, r2 + 10, fs, (Color){255, 238, 136, 255}); ui_text(msg, (int)mx + w, r2 + 10, fs, (Color){255, 238, 136, 255}); EndScissorMode(); }
+              BeginScissorMode(lw, r2, WIN_W - lw, bh); ui_text(msg, lw + (int)mx, r2 + 10, fs, (Color){255, 238, 136, 255}); ui_text(msg, lw + (int)mx + w, r2 + 10, fs, (Color){255, 238, 136, 255}); EndScissorMode(); }
             if (debug_ui) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;
