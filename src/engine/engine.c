@@ -464,7 +464,20 @@ void eng_spawn_map_object(int x, int mapy, uint16_t gfx, int type) {
     int air = eng_is_air_gfx(gfx); int copies = 1;
     if (eng_difficulty_mode == 0) { int *c = air ? &spawn_counter_air : &spawn_counter_ground; if (((*c)++ & 1)) return; }
     else if (eng_difficulty_mode == 2) { if (air) { copies = 1 + ((spawn_counter_air++ & 1) == 0); } else copies = 2; }
-    for (int k = 1; k < copies; k++) eng_spawn_map_object_one(x + (k * 40) % 280 - 20, mapy + (air ? 0 : 24), gfx, type);
+    for (int k = 1; k < copies; k++) {
+        if (air) {
+            /* aerial extra: trails the original by 12 px of map (enters ~48 VBL later) so they never stack */
+            eng_spawn_map_object_one(x, (uint16_t)(mapy - 12 * k), gfx, type);
+        } else {
+            /* ground extra: must stand on free ground -- try offsets and reject spots on walls/buildings (collision plane 1) */
+            static const int offs[] = { 40, -40, 72, -72, 104, -104, 0 };
+            for (int t = 0; offs[t]; t++) {
+                int nx = x + offs[t]; if (nx < 16 || nx > 304) continue;
+                int blocked = 0; for (int dy = -12; dy <= 12 && !blocked; dy += 6) for (int dx = -12; dx <= 12 && !blocked; dx += 6) if (eng_terrain_at(nx + dx, (uint16_t)(mapy + dy), 0)) blocked = 1;
+                if (!blocked) { eng_spawn_map_object_one(nx, mapy, gfx, type); break; }
+            }
+        }
+    }
     eng_spawn_map_object_one(x, mapy, gfx, type);
 }
 void eng_spawn_map_object_one(int x, int mapy, uint16_t gfx, int type) {
