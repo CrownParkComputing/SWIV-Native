@@ -250,7 +250,7 @@ void enemy_init(Obj *o, uint16_t gfx, uint16_t mask, int margin, int hp, int sco
 }
 void enemy_cleanup(Obj *o) { g.threat156 -= o->threat; o->threat = 0; gfx_release(o, o->gfxset); box_unlink(o); }
 void on_bullet_hit(Obj *o) {
-    if (o->box.hits & 0xC0) g.stat_hits++;
+    if (o->box.hits & 0xC0) { g.stat_hits++; if (o->box.hits & 0x40) g.stat_hits_p[0]++; else g.stat_hits_p[1]++; }
     if (--o->hp > 0) { sfx(SFX_HIT, o->x >> 16); o->flags367 |= F_HIT_FLASH; return; }
     kill(o);
 }

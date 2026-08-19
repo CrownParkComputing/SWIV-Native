@@ -316,13 +316,14 @@ int main(int argc, char **argv) {
             }
             if (!tc && !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) stick_on = 0;
             player_input_dx = dx; player_input_dy = dy; player_input_fire = fire;
-            /* first real gamepad also drives player 1 (heli) */
-            pad_read(0, &player_input_dx, &player_input_dy, &player_input_fire, NULL);
+            /* gamepads follow the game's own controls screen (fe_control_method, LAB_01D2): joystick port 2 = first
+             * real gamepad, port 1 = second, keyboard = none.  The keyboard sets (arrows+space / WASD+shift) always work. */
+            { int m = fe_control_method(0); if (m == 1) pad_read(0, &player_input_dx, &player_input_dy, &player_input_fire, NULL); else if (m == 0) pad_read(1, &player_input_dx, &player_input_dy, &player_input_fire, NULL); }
             /* player 2 (jeep): WASD + left shift/ctrl, or gamepad 1 */
             int dx2 = 0, dy2 = 0, f2 = 0;
             if (IsKeyDown(KEY_A)) dx2 = -1; if (IsKeyDown(KEY_D)) dx2 = 1; if (IsKeyDown(KEY_W)) dy2 = -1; if (IsKeyDown(KEY_S)) dy2 = 1;
             if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL)) f2 = 1;
-            pad_read(1, &dx2, &dy2, &f2, NULL);   /* second real gamepad = jeep */
+            { int m = fe_control_method(1); if (m == 0) pad_read(1, &dx2, &dy2, &f2, NULL); else if (m == 1) pad_read(0, &dx2, &dy2, &f2, NULL); }
             player2_input_dx = dx2; player2_input_dy = dy2; player2_input_fire = f2;
             if (!game_paused) {
                 int ja = fe_join_allowed();
@@ -401,7 +402,6 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < VIEW_W * VIEW_H; i++) { uint8_t v = spr[i]; if (v == 255) continue; int pair = (v >> 4) & 1, ci = v & 15; if (ci && ci < 4) buf[i] = SPRPAL[pair][ci]; }
             }
             if (fe_game) { int dk = fe_play_darkness(); if (dk) { int k = 256 - dk; for (int i = 0; i < VIEW_W * VIEW_H; i++) { buf[i].r = (uint8_t)(buf[i].r * k >> 8); buf[i].g = (uint8_t)(buf[i].g * k >> 8); buf[i].b = (uint8_t)(buf[i].b * k >> 8); } } }
-            { FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0); fe_draw_hud(buf, &h, &j); }   /* LAB_0216: the original's status line (plane 5 + copper gradient) */
             int nobj = 0; FOR_EACH_OBJ(ob) nobj++;
             snprintf(status, sizeof status, "PLAY level %d %s   score %06d   objects %d   scroll %04x   tick %d%s",
                      eng_level + 1, eng_map.pam_name, g.heli.score, nobj, g.scroll3530, g.tick, game_paused ? "   PAUSED" : "");
@@ -518,6 +518,26 @@ int main(int argc, char **argv) {
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
         float r1 = by + 26, r2 = by + 72, bh = 40;
         if (mode == 2) {
+            /* score panel in the bottom bar, game font (LAB_0593 status format): PLAYER 1 heli left, HI centre, PLAYER 2 jeep right */
+            #define SW 426                 /* strip width: drawn at 3x (1278 px) so left status, HI and right status fit */
+            static uint8_t strip[SW * 7]; static Color simg[SW * 8]; static Texture2D stex, stex2; static int stex_ok = 0;
+            if (!stex_ok) { Image im = { simg, SW, 8, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 }; stex = LoadTextureFromImage(im); stex2 = LoadTextureFromImage(im); stex_ok = 1; }
+            static const Color GRAD[7] = { {136,136,221,255}, {170,170,238,255}, {204,204,255,255}, {204,204,255,255}, {204,204,255,255}, {170,170,238,255}, {136,136,221,255} };
+            char line[256], st[64];
+            int hi = g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score; if (g.jeep.score > hi) hi = g.jeep.score; if (g.jeep.hiscore80 > hi) hi = g.jeep.hiscore80;
+            FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0);
+            fe_status_line(st, sizeof st, 0, &h); snprintf(line, sizeof line, "_x008_a1%s_f", st);
+            fe_status_line(st, sizeof st, 1, &j); { char r2s[96]; snprintf(r2s, sizeof r2s, "_x418_a2%s_f", st); strncat(line, r2s, sizeof line - strlen(line) - 1); }
+            { char hs[64]; snprintf(hs, sizeof hs, "_x213_a0HI %06d0_f", hi % 1000000); strncat(line, hs, sizeof line - strlen(line) - 1); }
+            fe_text_strip(strip, SW, line);
+            for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? GRAD[y] : (Color){0, 0, 0, 0};
+            UpdateTexture(stex, simg);
+            DrawTexturePro(stex, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + 8, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
+            snprintf(line, sizeof line, "_x213_a0shots %d  hits %d  %d%%_f", g.stat_shots, g.stat_hits, g.stat_shots ? g.stat_hits * 100 / g.stat_shots : 0);
+            fe_text_strip(strip, SW, line);
+            for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? (Color){200, 200, 200, 255} : (Color){0, 0, 0, 0};
+            UpdateTexture(stex2, simg);
+            DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){WIN_W / 2 - SW, by + 40, SW * 2, 16}, (Vector2){0, 0}, 0, WHITE);
             if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
         }
         if (mode == 3) {
@@ -525,7 +545,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
             if (button((Rectangle){WIN_W - 364, r1, 120, bh}, "QUIT", 0)) { CloseWindow(); return 0; }
             if (button((Rectangle){WIN_W - 500, r1, 128, bh}, "OPTIONS", 0)) { mode = 6; }
-            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        PORT 1 JEEP: WASD + Shift / pad 1 / tap left  --  PORT 2 HELICOPTER: arrows + Space / pad 0 / tap right  --  press fire to start, P pauses, ESC (paused) for menu        ";
+            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        PORT 1 JEEP: WASD + Shift / pad 1 / tap left  --  PORT 2 HELICOPTER: arrows + Space / pad 0 / tap right  --  press fire to start, P pauses, ESC (paused) for menu  --  F1-F10 / F11: the game's own controls screen        ";
               int lw = 0; if (rr_logo.id) { float lsc = (BAR_H - 16) / (float)rr_logo.height; lw = (int)(rr_logo.width * lsc) + 24; DrawTextureEx(rr_logo, (Vector2){8, by + 8}, 0, lsc, WHITE); }
               int fs = 26, w = ui_measure(msg, fs); mx -= 1.5f; if (mx < -w) mx += w;
               BeginScissorMode(lw, r2, WIN_W - lw, bh); ui_text(msg, lw + (int)mx, r2 + 10, fs, (Color){255, 238, 136, 255}); ui_text(msg, lw + (int)mx + w, r2 + 10, fs, (Color){255, 238, 136, 255}); EndScissorMode(); }
