@@ -27,3 +27,15 @@ Validation chain:
    (≈97 % on sprite-free terrain).
 
 Disk image not included (`SWIVFIX.ADF`, see swiv-amiga-re).
+
+## Play mode (prototype engine)
+
+`PLAY` in the viewer (or `--play`).  `src/game.[ch]` is a native shoot-'em-up
+core driven by the real map records: an object record is spawned when it comes
+within 256 px of the screen edge (as the original's `0x365e`), classified per
+sprite file (ground static / ground mover / air / mine / pickup / scenery —
+table `CLASS_TAB`, hand-measured from which sprites appear as what), with
+player heli, bullets, aimed enemy fire, collisions, EXPL1/EXPL2/PLOP explosions,
+score/lives/power.  Controls: arrows + space, or touch — left half drag = stick,
+right half = fire.  Behaviours are approximations until they are read out of
+AMPROG.OBJ; map/terrain/palette are exact.

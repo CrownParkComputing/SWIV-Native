@@ -166,7 +166,7 @@ void swiv_blit_part(SwivCanvas *c, const SwivPart *p, int x0, int y0) {
             int tx = x0 + x; if (tx < 0 || tx >= c->w) continue;
             int j = x >> 4, bit = 0x8000 >> (x & 15), v = 0;
             for (int k = 0; k < 4; k++) if (be16(row + (k * wd + j) * 2) & bit) v |= 1 << k;
-            if (v != p->trans) { c->px[(size_t)ty * c->w + tx] = (uint8_t)v; c->palid[(size_t)ty * c->w + tx] = (uint8_t)c->cur_palid; }
+            if (v != p->trans) { c->px[(size_t)ty * c->w + tx] = (uint8_t)v; if (c->palid) c->palid[(size_t)ty * c->w + tx] = (uint8_t)c->cur_palid; }
         }
     }
 }

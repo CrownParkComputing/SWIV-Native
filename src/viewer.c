@@ -1,6 +1,7 @@
 /* swivview -- native SWIV map scroller + sprite browser (raylib, no 68000).
  * All controls are on-screen buttons (mouse or touch; keys are optional extras). */
 #include "swivdata.h"
+#include "game.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,10 +17,11 @@
 #define N_AMPROG_PAL 11
 
 static SwivDisk disk;
-static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, map_objs = 1;
+static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
+static Game game; static int game_on = 0; static int game_paused = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 0;
 static Texture2D tex; static Image img;
-static int mode = 0;              /* 0 map, 1 sprites */
+static int mode = 0;              /* 0 map, 1 sprites, 2 play */
 
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
@@ -42,7 +44,16 @@ static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTO
 static void load_level(int lv) {
     if (map_lv >= 0) { swiv_map_free(&map); swiv_canvas_free(&canvas); }
     swiv_map_load(&disk, lv, &map);
-    swiv_map_render(&disk, &map, &canvas, map_objs);
+    swiv_map_render(&disk, &map, &canvas, 0);
+    for (int i = 0; i < map.nobjs; i++) {
+        const SwivRec *r = &map.objs[i]; int id = r->gfx & 0x1FF;
+        int cls = id < disk.norder ? game_class_of(disk.order[id]) : CLS_SCENERY;
+        int is_air = cls == CLS_AIR;
+        if (cls == CLS_SCENERY || (is_air ? show_air : show_ground)) {
+            canvas.cur_palid = swiv_map_palid_at(&map, r->y);
+            swiv_blit_gfx(&disk, &canvas, r->gfx, r->x, map.height + SWIV_MARGIN - r->y);
+        }
+    }
     map_lv = lv; scroll_pos = 0;
 }
 static void draw_map_frame(Color *out) {
@@ -124,6 +135,8 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--adf")) adf = argv[++i];
         else if (!strcmp(argv[i], "--shot")) shot = argv[++i];
         else if (!strcmp(argv[i], "--sprites")) mode = 1;
+        else if (!strcmp(argv[i], "--play")) mode = 2;
+        else if (!strcmp(argv[i], "--frames")) shot_frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--file")) shot_file = argv[++i];
         else if (!strcmp(argv[i], "--pal")) sp_pal = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--scroll")) shot_scroll = atof(argv[++i]);
@@ -138,7 +151,38 @@ int main(int argc, char **argv) {
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
-        if (mode == 0) {
+        if (mode == 2) {
+            if (!game_on) { game_init(&game, &disk, map_lv < 0 ? 0 : map_lv); game_on = 1; }
+            /* input: keyboard + touch/mouse (left half = stick, right half = fire) */
+            int dx = 0, dy = 0, fire = 0;
+            if (IsKeyDown(KEY_LEFT)) dx = -1; if (IsKeyDown(KEY_RIGHT)) dx = 1;
+            if (IsKeyDown(KEY_UP)) dy = -1; if (IsKeyDown(KEY_DOWN)) dy = 1;
+            if (IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_LEFT_CONTROL)) fire = 1;
+            static Vector2 stick0; static int stick_on = 0;
+            int tc = GetTouchPointCount();
+            for (int t = 0; t < (tc ? tc : (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? 1 : 0)); t++) {
+                Vector2 p = tc ? GetTouchPosition(t) : GetMousePosition();
+                if (p.y >= VIEW_H * SCALE) continue;           /* button bar */
+                if (p.x < WIN_W / 2) {
+                    if (!stick_on) { stick0 = p; stick_on = 1; }
+                    float ddx = p.x - stick0.x, ddy = p.y - stick0.y;
+                    if (ddx < -12) dx = -1; if (ddx > 12) dx = 1; if (ddy < -12) dy = -1; if (ddy > 12) dy = 1;
+                } else fire = 1;
+            }
+            if (!tc && !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) stick_on = 0;
+            game.input_dx = dx; game.input_dy = dy; game.input_fire = fire;
+            if (!game_paused) game_step(&game);
+            static uint8_t idx[VIEW_W * VIEW_H]; static uint16_t rowpal[VIEW_H][16];
+            game_render(&game, idx, rowpal);
+            for (int y = 0; y < VIEW_H; y++) {
+                Color cols[16];
+                for (int i = 0; i < 16; i++) { swiv_rgb12(rowpal[y][i], &cols[i].r, &cols[i].g, &cols[i].b); cols[i].a = 255; }
+                for (int x = 0; x < VIEW_W; x++) buf[y * VIEW_W + x] = cols[idx[y * VIEW_W + x] & 15];
+            }
+            snprintf(status, sizeof status, "PLAY level %d %s   score %06d   lives %d   power %d   scroll %.0f/%d%s%s",
+                     game.level + 1, game.map.pam_name, game.pscore, game.plives, game.ppower, game.scroll, game.map.height,
+                     game_paused ? "   PAUSED" : "", game.game_over ? "   GAME OVER" : game.level_done ? "   LEVEL COMPLETE" : "");
+        } else if (mode == 0) {
             if (!paused) scroll_pos += speed;
             if (scroll_pos < 0) scroll_pos = 0;
             if (scroll_pos > map.height) scroll_pos = map.height;
@@ -163,15 +207,26 @@ int main(int argc, char **argv) {
         DrawText(status, 8, by + 4, 16, RAYWHITE);
         float r1 = by + 26, r2 = by + 72, bh = 40;
         /* left: mode toggle */
-        if (button((Rectangle){8, r1, 100, bh}, mode ? "MAP" : "SPRITES", 0)) mode ^= 1;
-        if (mode == 0) {
+        if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
+        if (button((Rectangle){8, r2, 100, bh}, "SPRITES", mode == 1)) mode = 1;
+        if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_free(&game); game_on = 0; } mode = 2; }
+        if (mode == 2) {
+            for (int k = 0; k < 7; k++) {
+                char l[4]; snprintf(l, 4, "%d", k + 1);
+                if (button((Rectangle){120 + k * 52, r1, 48, bh}, l, game.level == k)) { game_free(&game); map_lv = k; game_init(&game, &disk, k); }
+            }
+            if (button((Rectangle){500, r1, 90, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
+            if (button((Rectangle){600, r1, 110, bh}, "RESTART", 0)) { int lv = game.level; game_free(&game); game_init(&game, &disk, lv); }
+            DrawText("left half: drag to steer   right half: fire   (or arrows + space)", 120, r2 + 12, 16, LIGHTGRAY);
+        } else if (mode == 0) {
             for (int k = 0; k < 7; k++) {
                 char l[4]; snprintf(l, 4, "%d", k + 1);
                 if (button((Rectangle){120 + k * 52, r1, 48, bh}, l, map_lv == k)) load_level(k);
             }
             if (button((Rectangle){500, r1, 90, bh}, paused ? "PLAY" : "PAUSE", paused)) paused ^= 1;
-            if (button((Rectangle){600, r1, 90, bh}, "OBJECTS", map_objs)) { double s = scroll_pos; map_objs ^= 1; load_level(map_lv); scroll_pos = s; }
-            if (button((Rectangle){700, r1, 90, bh}, "RESTART", 0)) scroll_pos = 0;
+            if (button((Rectangle){600, r1, 90, bh}, "GROUND", show_ground)) { double s = scroll_pos; show_ground ^= 1; load_level(map_lv); scroll_pos = s; }
+            if (button((Rectangle){700, r1, 70, bh}, "AIR", show_air)) { double s = scroll_pos; show_air ^= 1; load_level(map_lv); scroll_pos = s; }
+            if (button((Rectangle){780, r1, 70, bh}, "RST", 0)) scroll_pos = 0;
             /* row 2: speed + scrub */
             DrawText("SPEED", 120, r2 + 12, 16, LIGHTGRAY);
             if (button((Rectangle){190, r2, 48, bh}, "/2", 0)) speed /= 2;
@@ -184,7 +239,7 @@ int main(int argc, char **argv) {
             if (held((Rectangle){600, r2, 90, bh})) scroll_pos -= 4; button((Rectangle){600, r2, 90, bh}, "<< BACK", 0);
             if (held((Rectangle){700, r2, 90, bh})) scroll_pos += 4; button((Rectangle){700, r2, 90, bh}, "FWD >>", 0);
             /* progress bar, tappable */
-            Rectangle pb = {800, r1, 150, bh * 2 + 6};
+            Rectangle pb = {800, r2, 150, bh};
             DrawRectangleRec(pb, (Color){50, 50, 58, 255});
             DrawRectangle(pb.x, pb.y + pb.height * (1 - scroll_pos / (map.height ? map.height : 1)), pb.width, 3, SKYBLUE);
             if (held(pb)) { Vector2 p = GetMousePosition(); scroll_pos = (1 - (p.y - pb.y) / pb.height) * map.height; }
