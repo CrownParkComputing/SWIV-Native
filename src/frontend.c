@@ -14,7 +14,6 @@
  * Sequence = LAB_00B2 main loop, run as a coroutine that yields once per VBL. */
 #include "frontend.h"
 #include "engine/coro.h"
-#include "engine/engine.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -392,7 +391,8 @@ static int hs_qualifies(int p, long score) { return score > hs[p][6].score; }   
 /* LAB_028D: insert, show the table, prompt, name entry (LAB_0299).  Keyboard from fe_key(). */
 static void screen_hiscore_entry(int p, long score) {
     hs_tables_init();
-    int shots = g.stat_shots_p[p], pct = shots ? g.stat_hits_p[p] * 100 / shots : 0;
+    extern int fe_stat_shots(int p), fe_stat_hits(int p);
+    int shots = fe_stat_shots(p), pct = shots ? fe_stat_hits(p) * 100 / shots : 0;
     int rank = 0; while (rank < 6 && score <= hs[p][rank].score) rank++;            /* LAB_02B2 (new entry goes above equal scores) */
     for (int i = 6; i > rank; i--) hs[p][i] = hs[p][i - 1];
     hs[p][rank].name[0] = 0; hs[p][rank].score = score; hs[p][rank].shots = shots; hs[p][rank].pct = pct;

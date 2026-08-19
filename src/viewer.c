@@ -78,6 +78,9 @@ static int button(Rectangle r, const char *label, int active) {
 }
 static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
 
+int fe_stat_shots(int p) { return g.stat_shots_p[p & 1]; }
+int fe_stat_hits(int p) { return g.stat_hits_p[p & 1]; }
+
 /* ---- gamepads: skip keyboard/mouse receivers that GLFW reports as joysticks ---- */
 static int real_pad(int nth) {
     int found = 0;
