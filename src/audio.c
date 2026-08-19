@@ -36,6 +36,7 @@ int  audio_event_bank(int ev) { return event_bank[ev]; }
 void audio_event_set(int ev, int bank) { if (ev >= 0 && ev < SFX_COUNT) event_bank[ev] = bank; }
 void audio_map_save(void) { FILE *f = fopen("sfxmap.txt", "w"); if (!f) return; for (int e = 0; e < SFX_COUNT; e++) fprintf(f, "%s %s\n", sfx_event_names[e], event_bank[e] >= 0 ? audio_bank_name(event_bank[e]) : "-"); fclose(f); }
 static void audio_map_load(void) { FILE *f = fopen("sfxmap.txt", "r"); char ev[64], nm[64]; if (!f) return; while (fscanf(f, "%63s %63s", ev, nm) == 2) for (int e = 0; e < SFX_COUNT; e++) if (!strcmp(ev, sfx_event_names[e])) { event_bank[e] = -1; for (int i = 0; i < bank_n; i++) if (!strcmp(nm, audio_bank_name(i))) event_bank[e] = i; } fclose(f); }
+static float sfx_gain = 1.0f, music_gain = 1.0f;
 static xmp_context xc; static AudioStream mstream; static int music_on; static int16_t mbuf[2048];   /* 1024 stereo frames = the stream buffer size */
 
 /* Paula emulation for the original's sound routines (LAB_03C1.. in AMPROG): a voice plays
@@ -123,7 +124,6 @@ void audio_music_play(SwivDisk *d, const char *name) {
     xmp_start_player(xc, 44100, 0); xmp_set_player(xc, XMP_PLAYER_AMP, 1); xmp_set_player(xc, XMP_PLAYER_MIX, 70);
     SetAudioStreamVolume(mstream, music_gain); PlayAudioStream(mstream); music_on = 1; snprintf(mcur, sizeof mcur, "%s", name); mdisk = d;
 }
-static float sfx_gain = 1.0f, music_gain = 1.0f;
 void audio_set_volumes(float sfxv, float musicv) { sfx_gain = sfxv; music_gain = musicv; if (mstream.buffer) SetAudioStreamVolume(mstream, music_gain); }
 void audio_update(void) {
     if (!music_on) return;
