@@ -179,6 +179,28 @@ void swiv_blit_gfx(SwivDisk *d, SwivCanvas *c, int gfx, int x, int y) {
     for (int i = 0; i < F->nparts; i++) swiv_blit_part(c, &F->parts[i], x - F->parts[i].cx, y - F->parts[i].cy);
 }
 
+static void blit_part_shadow(SwivCanvas *c, const SwivPart *p, int x0, int y0, uint8_t colour) {
+    int wd = (p->w + 15) / 16;
+    if (p->dsz < (uint32_t)(wd * 8 * p->h)) return;
+    for (int y = 0; y < p->h; y++) {
+        int ty = y0 + y; if (ty < 0 || ty >= c->h) continue;
+        const uint8_t *row = p->data + (size_t)y * 4 * wd * 2;
+        for (int x = 0; x < p->w; x++) {
+            int tx = x0 + x; if (tx < 0 || tx >= c->w) continue;
+            int j = x >> 4, bit = 0x8000 >> (x & 15), v = 0;
+            for (int k = 0; k < 4; k++) if (be16(row + (k * wd + j) * 2) & bit) v |= 1 << k;
+            if (v != p->trans) c->px[(size_t)ty * c->w + tx] = colour;
+        }
+    }
+}
+void swiv_blit_gfx_shadow(SwivDisk *d, SwivCanvas *c, int gfx, int x, int y, uint8_t colour) {
+    int fi = swiv_order_index(d, gfx & 0x1FF); if (fi < 0) return;
+    const SwivLin *L = swiv_lin(d, fi); int fr = gfx >> 9;
+    if (fr >= L->nframes) return;
+    const SwivFrame *F = &L->frames[fr];
+    for (int i = 0; i < F->nparts; i++) blit_part_shadow(c, &F->parts[i], x - F->parts[i].cx, y - F->parts[i].cy, colour);
+}
+
 /* ---- level table / maps ---- */
 int swiv_level_count(void) { return 7; }
 
@@ -240,7 +262,7 @@ static int cmp_draw(const void *a, const void *b) {
     return s->seq - r->seq;                 /* descending seq within layer */
 }
 
-int swiv_map_skip_nonscenery_tiles = 0;   /* play mode: the game draws tiles only from scenery sets (underscore names) */
+int (*swiv_map_tile_filter)(uint16_t gfx) = 0;   /* return 1 to skip a tile (play mode: tiles carrying an object handler gfx word are placeholders) */
 int swiv_map_render(SwivDisk *d, const SwivMap *m, SwivCanvas *c, int with_objects) {
     int H = m->height + 2 * SWIV_MARGIN;
     swiv_canvas_init(c, SWIV_FIELD_W, H, 10);   /* background = colour 10 */
@@ -248,7 +270,7 @@ int swiv_map_render(SwivDisk *d, const SwivMap *m, SwivCanvas *c, int with_objec
     memcpy(order, m->tiles, sizeof(SwivRec) * m->ntiles);
     qsort(order, m->ntiles, sizeof(SwivRec), cmp_draw);
     for (int i = 0; i < m->ntiles; i++) {
-        if (swiv_map_skip_nonscenery_tiles) { int id = order[i].gfx & 0x1ff; if (id < d->norder && d->order[id][0] != '_') continue; }
+        if (swiv_map_tile_filter && swiv_map_tile_filter((uint16_t)order[i].gfx)) continue;
         c->cur_palid = swiv_map_palid_at(m, order[i].y);
         swiv_blit_gfx(d, c, order[i].gfx, order[i].x, m->height + SWIV_MARGIN - order[i].y);
     }

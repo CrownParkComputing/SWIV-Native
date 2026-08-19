@@ -50,7 +50,8 @@ static int is_air_name(const char *n) {
     for (int i = 0; air[i]; i++) if (!strncasecmp(n, air[i], strlen(air[i]))) return 1;
     return 0;
 }
-extern int swiv_map_skip_nonscenery_tiles;
+extern int (*swiv_map_tile_filter)(uint16_t gfx);
+static int placeholder_tile(uint16_t gfx) { return eng_handler_ported(gfx) || (strcmp(eng_handler_name(gfx), "DEFAULT") != 0); }
 static void load_level(int lv) {
     if (map_lv >= 0) { swiv_map_free(&map); swiv_canvas_free(&canvas); }
     swiv_map_load(&disk, lv, &map);
@@ -185,7 +186,7 @@ int main(int argc, char **argv) {
             /* render: terrain window then sprites (descending key) */
             static uint8_t idx[VIEW_W * VIEW_H]; static uint16_t rowpal[VIEW_H][16];
             static SwivCanvas terrain; static int terrain_lv = -1;
-            if (terrain_lv != eng_level) { if (terrain_lv >= 0) swiv_canvas_free(&terrain); swiv_map_skip_nonscenery_tiles = 1; swiv_map_render(&disk, &eng_map, &terrain, 0); swiv_map_skip_nonscenery_tiles = 0; terrain_lv = eng_level; }
+            if (terrain_lv != eng_level) { if (terrain_lv >= 0) swiv_canvas_free(&terrain); swiv_map_tile_filter = placeholder_tile; swiv_map_render(&disk, &eng_map, &terrain, 0); swiv_map_tile_filter = 0; terrain_lv = eng_level; }
             int top_img = eng_map.height + SWIV_MARGIN - (int)(0xE9C0 - g.scroll3542);   /* image row of map y = scroll (screen top) */
             for (int y = 0; y < VIEW_H; y++) {
                 int sy = top_img + y;
@@ -198,7 +199,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < render_count; i++) rl[n++] = render_list[i];
             for (int i = 0; i < player_bullet_count; i++) rl[n++] = player_bullet_render[i];
             for (int i = 1; i < n; i++) { RenderEntry e = rl[i]; int j = i - 1; while (j >= 0 && rl[j].key < e.key) { rl[j + 1] = rl[j]; j--; } rl[j + 1] = e; }
-            for (int i = 0; i < n; i++) if (!(rl[i].flags & 0x20) || 1) swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y);
+            for (int i = 0; i < n; i++) { if (rl[i].flags & 0x20) swiv_blit_gfx_shadow(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y, 0); else swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y); }
             for (int y = 0; y < VIEW_H; y++) {
                 Color cols[16];
                 for (int i = 0; i < 16; i++) { swiv_rgb12(rowpal[y][i], &cols[i].r, &cols[i].g, &cols[i].b); cols[i].a = 255; }

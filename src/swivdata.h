@@ -75,6 +75,7 @@ void swiv_canvas_init(SwivCanvas *c, int w, int h, uint8_t fill);
 void swiv_canvas_free(SwivCanvas *c);
 void swiv_blit_part(SwivCanvas *c, const SwivPart *p, int x0, int y0);
 void swiv_blit_gfx(SwivDisk *d, SwivCanvas *c, int gfx, int x, int y);     /* anchored at (x,y) */
+void swiv_blit_gfx_shadow(SwivDisk *d, SwivCanvas *c, int gfx, int x, int y, uint8_t colour);  /* silhouette */
 /* Full map render in image space (y down).  with_objects: also draw type!=0 */
 int  swiv_map_render(SwivDisk *d, const SwivMap *m, SwivCanvas *c, int with_objects);
 /* Palette for image row iy (RGB12 x16) */
