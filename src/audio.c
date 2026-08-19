@@ -13,7 +13,20 @@
 static Sound snd[SFX_COUNT]; static int ready;
 /* optional synthesised bank (src/sfx_bank.c) */
 int sfx_bank_count(void) __attribute__((weak)); const SfxDesc *sfx_bank_desc(int i) __attribute__((weak)); int16_t *sfx_bank_render(int i, SwivDisk *d, int *frames_out) __attribute__((weak));
-static Sound bank_snd[64]; static int bank_n; static int event_bank[SFX_COUNT]; static SwivDisk *adisk;
+static Sound bank_snd[64]; static int bank_n; static int16_t *bank_pcm[64]; static int bank_frames[64];
+typedef struct { float pitch, vol, maxsec; } Tune; static Tune tune[64];
+static void bank_rebuild(int i) {
+    if (!bank_pcm[i]) return;
+    if (bank_snd[i].frameCount) UnloadSound(bank_snd[i]);
+    int fr = bank_frames[i]; int cap = (int)(tune[i].maxsec * 22050); if (cap > 0 && fr > cap) fr = cap;
+    Wave w = { .frameCount = fr, .sampleRate = 22050, .sampleSize = 16, .channels = 1, .data = bank_pcm[i] };
+    bank_snd[i] = LoadSoundFromWave(w); SetSoundPitch(bank_snd[i], tune[i].pitch); SetSoundVolume(bank_snd[i], tune[i].vol);
+}
+float audio_tune_get(int i, int what) { return what == 0 ? tune[i].pitch : what == 1 ? tune[i].vol : tune[i].maxsec; }
+void audio_tune_set(int i, int what, float v) { if (what == 0) tune[i].pitch = v; else if (what == 1) tune[i].vol = v; else tune[i].maxsec = v; bank_rebuild(i); }
+void audio_tune_save(void) { FILE *f = fopen("sfxtune.txt", "w"); if (!f) return; for (int i = 0; i < bank_n; i++) fprintf(f, "%s %.3f %.3f %.2f\n", audio_bank_name(i), tune[i].pitch, tune[i].vol, tune[i].maxsec); fclose(f); }
+static void audio_tune_load(void) { FILE *f = fopen("sfxtune.txt", "r"); char nm[64]; float p, v, m; if (!f) return; while (fscanf(f, "%63s %f %f %f", nm, &p, &v, &m) == 4) for (int i = 0; i < bank_n; i++) if (!strcmp(nm, audio_bank_name(i))) { tune[i] = (Tune){ p, v, m }; bank_rebuild(i); } fclose(f); }
+int audio_bank_frames(int i) { return bank_frames[i]; } static int event_bank[SFX_COUNT]; static SwivDisk *adisk;
 int audio_bank_count(void) { return bank_n; }
 const char *audio_bank_name(int i) { return sfx_bank_desc ? sfx_bank_desc(i)->name : ""; }
 const char *audio_bank_label(int i) { return sfx_bank_desc ? sfx_bank_desc(i)->label : ""; }
@@ -79,10 +92,10 @@ void audio_init(SwivDisk *d) {
         bank_n = sfx_bank_count(); if (bank_n > 64) bank_n = 64;
         for (int i = 0; i < bank_n; i++) {
             int fr = 0; int16_t *pcm = sfx_bank_render(i, d, &fr);
-            if (pcm && fr > 0) { Wave w = { .frameCount = fr, .sampleRate = 22050, .sampleSize = 16, .channels = 1, .data = pcm }; bank_snd[i] = LoadSoundFromWave(w); }
-            free(pcm);
+            bank_pcm[i] = pcm; bank_frames[i] = fr; tune[i] = (Tune){ 1.0f, 1.0f, 4.0f };   /* default cap 4 s: the driver steals/ends endless voices in play */
+            if (pcm && fr > 0) bank_rebuild(i);
         }
-        audio_map_load();
+        audio_map_load(); audio_tune_load();
     }
     xc = xmp_create_context();
     SetAudioStreamBufferSizeDefault(1024); mstream = LoadAudioStream(44100, 16, 2);

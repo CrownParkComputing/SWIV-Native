@@ -6,6 +6,7 @@ extern void player_start(void); extern void player_vbl(void);
 extern void audio_init(SwivDisk *d); extern void audio_update(void); extern void audio_music_play(SwivDisk *d, const char *name);
 extern int audio_bank_count(void); extern const char *audio_bank_name(int i); extern const char *audio_bank_label(int i); extern void audio_bank_play(int i);
 extern int audio_event_bank(int ev); extern void audio_event_set(int ev, int bank); extern void audio_map_save(void);
+extern float audio_tune_get(int i, int what); extern void audio_tune_set(int i, int what, float v); extern void audio_tune_save(void); extern int audio_bank_frames(int i);
 extern int player_input_dx, player_input_dy, player_input_fire;
 extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
@@ -280,21 +281,33 @@ int main(int argc, char **argv) {
         int by = VIEW_H * SCALE;
         DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
                 if (mode == 4) {
-            /* SFX debug: one row per game event: description, current sound, < > to change (plays it), PLAY to hear */
-            int nb = audio_bank_count(); int x0 = 24, y0 = 24, row_h = 64;
-            ui_text("SOUND EFFECTS - pick the original routine for each game event", x0, y0, 28, RAYWHITE);
-            for (int e = 0; e < SFX_COUNT; e++) {
-                int y = y0 + 50 + e * row_h; int b = audio_event_bank(e);
-                char l[128];
-                ui_text(sfx_event_names[e], x0, y + 14, 26, (Color){255, 238, 136, 255});
-                if (button((Rectangle){x0 + 260, y, 56, 52}, "<", 0)) { b = (b <= 0 ? nb : b) - 1; audio_event_set(e, b); audio_bank_play(b); }
-                snprintf(l, sizeof l, "%s", b >= 0 ? audio_bank_label(b) : "(builtin)");
-                if (button((Rectangle){x0 + 324, y, 640, 52}, l, 0)) sfx(e, 160);
-                if (button((Rectangle){x0 + 972, y, 56, 52}, ">", 0)) { b = (b + 1) % (nb ? nb : 1); audio_event_set(e, b); audio_bank_play(b); }
+            /* SFX debug: every original sound routine = one row: description | used by | PLAY | pitch | volume | max length */
+            static float sc = 0; int nb = audio_bank_count(); int x0 = 16, y0 = 16, row_h = 60, list_y = y0 + 44, list_h = VIEW_H * SCALE - 130;
+            ui_text("SOUND EFFECTS - every routine the game triggers; adjust pitch / volume / length, then SAVE", x0, y0, 26, RAYWHITE);
+            sc -= GetMouseWheelMove() * row_h * 2; float maxs = nb * row_h - list_h; if (maxs < 0) maxs = 0; if (sc < 0) sc = 0; if (sc > maxs) sc = maxs;
+            BeginScissorMode(0, list_y, WIN_W, list_h);
+            for (int k = 0; k < nb; k++) {
+                float y = list_y + k * row_h - sc; if (y + row_h < list_y || y > list_y + list_h) continue;
+                char used[128] = ""; for (int e = 0; e < SFX_COUNT; e++) if (audio_event_bank(e) == k) { if (used[0]) strcat(used, ","); strncat(used, sfx_event_names[e], 30); }
+                ui_text(audio_bank_label(k), x0, y + 4, 22, (Color){255, 238, 136, 255});
+                ui_text(used[0] ? used : "-", x0, y + 30, 18, LIGHTGRAY);
+                if (button((Rectangle){x0 + 420, y + 4, 90, 48}, "PLAY", 0)) audio_bank_play(k);
+                char l[48]; float pv = audio_tune_get(k, 0), vv = audio_tune_get(k, 1), mv = audio_tune_get(k, 2);
+                if (button((Rectangle){x0 + 530, y + 4, 44, 48}, "-", 0)) { audio_tune_set(k, 0, pv / 1.0595f); audio_bank_play(k); }
+                snprintf(l, sizeof l, "pitch %.2f", pv); ui_text(l, x0 + 582, y + 16, 20, RAYWHITE);
+                if (button((Rectangle){x0 + 700, y + 4, 44, 48}, "+", 0)) { audio_tune_set(k, 0, pv * 1.0595f); audio_bank_play(k); }
+                if (button((Rectangle){x0 + 770, y + 4, 44, 48}, "-", 0)) { audio_tune_set(k, 1, vv > 0.1f ? vv - 0.1f : 0); audio_bank_play(k); }
+                snprintf(l, sizeof l, "vol %.1f", vv); ui_text(l, x0 + 822, y + 16, 20, RAYWHITE);
+                if (button((Rectangle){x0 + 910, y + 4, 44, 48}, "+", 0)) { audio_tune_set(k, 1, vv < 2.0f ? vv + 0.1f : 2.0f); audio_bank_play(k); }
+                if (button((Rectangle){x0 + 980, y + 4, 44, 48}, "-", 0)) { audio_tune_set(k, 2, mv > 0.25f ? mv - 0.25f : 0.25f); audio_bank_play(k); }
+                snprintf(l, sizeof l, "len %.2fs / %.1fs", mv, audio_bank_frames(k) / 22050.0); ui_text(l, x0 + 1032, y + 16, 20, RAYWHITE);
+                if (button((Rectangle){x0 + 1200, y + 4, 44, 48}, "+", 0)) { audio_tune_set(k, 2, mv + 0.25f); audio_bank_play(k); }
             }
-            int by2 = y0 + 50 + SFX_COUNT * row_h + 12;
-            if (button((Rectangle){x0, by2, 170, 52}, "SAVE", 0)) audio_map_save();
+            EndScissorMode();
+            int by2 = list_y + list_h + 10;
+            if (button((Rectangle){x0, by2, 170, 52}, "SAVE", 0)) { audio_tune_save(); audio_map_save(); }
             if (button((Rectangle){x0 + 180, by2, 170, 52}, "TITLE", 0)) mode = 3;
+            ui_text("wheel to scroll", x0 + 370, by2 + 14, 20, LIGHTGRAY);
         }
         int dev = debug_ui || (mode == 0 || mode == 1);      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
