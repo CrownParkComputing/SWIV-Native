@@ -52,6 +52,26 @@ static int button(Rectangle r, const char *label, int active) {
 }
 static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
 
+/* ---- gamepads: skip keyboard/mouse receivers that GLFW reports as joysticks ---- */
+static int real_pad(int nth) {
+    int found = 0;
+    for (int i = 0; i < 8; i++) {
+        if (!IsGamepadAvailable(i)) continue;
+        const char *n = GetGamepadName(i); if (!n) n = "";
+        if (strcasestr(n, "mouse") || strcasestr(n, "keyboard") || strcasestr(n, "receiver") || GetGamepadAxisCount(i) < 2) continue;
+        if (found++ == nth) return i;
+    }
+    return -1;
+}
+static void pad_read(int nth, int *dx, int *dy, int *fire, int *start) {
+    int p = real_pad(nth); if (p < 0) return;
+    float ax = GetGamepadAxisMovement(p, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(p, GAMEPAD_AXIS_LEFT_Y);
+    if (ax < -0.4f || IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) *dx = -1; if (ax > 0.4f || IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) *dx = 1;
+    if (ay < -0.4f || IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_UP)) *dy = -1; if (ay > 0.4f || IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) *dy = 1;
+    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(p, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) || IsGamepadButtonDown(p, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) || IsGamepadButtonDown(p, GAMEPAD_BUTTON_RIGHT_TRIGGER_2)) *fire = 1;
+    if (start && (IsGamepadButtonPressed(p, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(p, GAMEPAD_BUTTON_MIDDLE_RIGHT))) *start = 1;
+}
+
 /* ---- map ---- */
 static int is_air_name(const char *n) {
     static const char *air[] = { "FODDERA", "BIRD", "VTOL", "BLACKJET", "SKYEYEA", "SKYEYEB", "YELLOW", "TRILO", "XEVIOUS", "BUNNY", "GOOSE",
@@ -231,8 +251,8 @@ int main(int argc, char **argv) {
             if (!cover) decode_cover();
             if (cover) memcpy(buf, cover, sizeof(Color) * VIEW_W * VIEW_H); else memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
             /* original: port 2 = helicopter, port 1 = jeep; either fire starts the game with that vehicle, the other can join any time */
-            int start_heli = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
-            int start_jeep = IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_LEFT_CONTROL) || IsGamepadButtonPressed(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(1, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+            int start_heli = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER), start_jeep = IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_LEFT_CONTROL);
+            { int d1 = 0, d2 = 0, f = 0; pad_read(0, &d1, &d2, &f, &start_heli); d1 = d2 = f = 0; pad_read(1, &d1, &d2, &f, &start_jeep); }
             Vector2 mp = GetMousePosition(); if (GetTouchPointCount() > 0) mp = GetTouchPosition(0);
             if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
             if (start_heli || start_jeep) { mode = 2; game_on = 0; pending_join_heli = start_heli; pending_join_jeep = start_jeep; }
@@ -256,19 +276,13 @@ int main(int argc, char **argv) {
             }
             if (!tc && !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) stick_on = 0;
             player_input_dx = dx; player_input_dy = dy; player_input_fire = fire;
-            /* gamepad 0 also drives player 1 */
-            if (IsGamepadAvailable(0)) { float ax = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
-                if (ax < -0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) player_input_dx = -1; if (ax > 0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) player_input_dx = 1;
-                if (ay < -0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) player_input_dy = -1; if (ay > 0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) player_input_dy = 1;
-                if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) player_input_fire = 1; }
+            /* first real gamepad also drives player 1 (heli) */
+            pad_read(0, &player_input_dx, &player_input_dy, &player_input_fire, NULL);
             /* player 2 (jeep): WASD + left shift/ctrl, or gamepad 1 */
             int dx2 = 0, dy2 = 0, f2 = 0;
             if (IsKeyDown(KEY_A)) dx2 = -1; if (IsKeyDown(KEY_D)) dx2 = 1; if (IsKeyDown(KEY_W)) dy2 = -1; if (IsKeyDown(KEY_S)) dy2 = 1;
             if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL)) f2 = 1;
-            if (IsGamepadAvailable(1)) { float ax = GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_Y);
-                if (ax < -0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) dx2 = -1; if (ax > 0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) dx2 = 1;
-                if (ay < -0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_UP)) dy2 = -1; if (ay > 0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) dy2 = 1;
-                if (IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) f2 = 1; }
+            pad_read(1, &dx2, &dy2, &f2, NULL);   /* second real gamepad = jeep */
             player2_input_dx = dx2; player2_input_dy = dy2; player2_input_fire = f2;
             if (!game_paused) { eng_vbl(); player_vbl(); }
             /* render: terrain window then sprites (descending key) */
