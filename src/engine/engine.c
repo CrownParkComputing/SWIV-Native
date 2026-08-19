@@ -327,7 +327,9 @@ void smart_bomb(Obj *o) { eng_spawn(o, bomb_script, 100); }
 void screen_shake(Obj *o) { g.scroll3530 -= 3; yield_once(o); g.scroll3530 += 3; yield_once(o); }
 void boss_enter(void) { g.boss140++; g.flags166 |= 8; }
 void boss_leave(Obj *o) { if (--g.boss140 == 0) { yield_n(o, 20); g.flags166 &= ~8; } }
+#ifdef SWIV_NO_AUDIO
 void sfx(int id, int x) { (void)id; (void)x; }
+#endif
 
 /* ---------- map interpreter (LAB_02EB/LAB_02F2) ----------
  * Records come from the native SwivMap (y grows with level progress); the

@@ -3,6 +3,7 @@
 #include "swivdata.h"
 #include "engine/engine.h"
 extern void player_start(void); extern void player_vbl(void);
+extern void audio_init(SwivDisk *d); extern void audio_update(void); extern void audio_music(int on);
 extern int player_input_dx, player_input_dy, player_input_fire;
 extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
@@ -155,6 +156,7 @@ int main(int argc, char **argv) {
     }
     if (swiv_open(&disk, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
     InitWindow(WIN_W, WIN_H, "SWIV native viewer");
+    if (!shot) audio_init(&disk);
     SetTargetFPS(50);
     img = GenImageColor(VIEW_W, VIEW_H, BLACK); tex = LoadTextureFromImage(img);
     Color *buf = malloc(sizeof(Color) * VIEW_W * VIEW_H);
@@ -163,6 +165,7 @@ int main(int argc, char **argv) {
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
+        audio_update(); audio_music(mode != 2);
         if (mode == 2) {
             if (!game_on) { eng_init(&disk, map_lv < 0 ? 0 : map_lv); player_start(); game_on = 1; eng_level = map_lv < 0 ? 0 : map_lv; }
             int dx = 0, dy = 0, fire = 0;
