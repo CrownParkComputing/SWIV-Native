@@ -362,7 +362,7 @@ void eng_init(SwivDisk *d, int level) {
     memset(&g, 0, sizeof g); g.disk = d; g.vbl_per_tick = 2; g.rng11172 = 0x12345678; g.render_gate155 = 1;
     g.clock202 = 2; g.clock204 = 0; g.missile_budget206 = 4; g.difficulty182 = 0;
     memset(pool, 0, sizeof pool); head.next = head.prev = &head; nboxes = 0; memset(extboxes, 0, sizeof extboxes);
-    g.cursor3586 = 0xE9C0; g.scroll3530 = 0xE860; g.scroll3542 = g.scroll3530;
+    g.cursor3586 = 0xE9C0; g.scroll3530 = 0xE860; g.scroll3542 = g.scroll3530; g.jeep_limit3558 = 0xffff;   /* $20DA8A: MOVE.W #$ffff,3558(A6) */
     g.heli.name = "Lazy Heli"; g.heli.no = 1; g.jeep.name = "Lazy Jeep"; g.jeep.no = 0; g.jeep.vehicle = 1;
     Obj *m = eng_spawn_at(map_task, 65535, NULL); m->name = "map";
     swiv_map_load(d, level, &eng_map);
