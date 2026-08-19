@@ -42,10 +42,9 @@ static int g_shots12486;                 /* shots fired statistic */
 static const int g_lives_step12524 = 4;  /* 12524(A6): lives are counted in -4 units */
 
 /* ---------------------------------------------------------------------------------------------------------------------
- * Terrain pixel tests.  LAB_030E / LAB_030D test the object's sprite against the background (two modes, result in
- * 162(A6)).  The engine only has blocked_ahead() (= LAB_067A, a TODO that returns 0).  Kept behind one function so the
- * real test can be dropped in. */
-static int pixel_test(Obj *o, int mode) { (void)o; (void)mode; return 0; }   /* LAB_030E (mode 0) / LAB_030D (mode 1) */
+ * Terrain pixel tests.  LAB_030E (mode 0) / LAB_030D (mode 1) test the object's sprite mask against the level's
+ * collision planes (engine: eng_terrain_test; see engine.c for the exact rule). */
+static int pixel_test(Obj *o, int mode) { return eng_terrain_test(o, mode); }
 static int blocked_ahead_mode(Obj *o, int mode) {                            /* LAB_067B: move by 2*(vx,vy), test, restore */
     o->x += o->vx * 2; o->y += o->vy * 2;
     int r = pixel_test(o, mode);

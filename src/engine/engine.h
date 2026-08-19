@@ -158,7 +158,9 @@ int  alternate_player(int *tx, int *ty);            /* LAB_0587 */
 int  prefer_heli(int *tx, int *ty);                 /* LAB_0581 */
 int  prefer_jeep(int *tx, int *ty);                 /* LAB_0582 */
 int  joy_to_angle(int joy, int *angle);             /* LAB_0697 */
-int  blocked_ahead(Obj *o);                         /* LAB_067A (terrain pixel test; native approximation) */
+int  blocked_ahead(Obj *o);                         /* LAB_067A: 2*(vx,vy) ahead, eng_terrain_test mode 0 */
+int  eng_terrain_test(Obj *o, int mode);            /* LAB_030E (mode 0: flag-4 tiles) / LAB_030D (mode 1: flag-2 tiles): sprite mask vs level collision mask */
+int  eng_terrain_at(int x, int y_orig, int mode);   /* one playfield pixel of the level collision mask */
 
 /* ---------- firing ---------- */
 void fire_homing(Obj *o, int dx, int dy, int angle);/* LAB_0613 */

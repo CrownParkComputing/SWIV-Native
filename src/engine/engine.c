@@ -313,7 +313,81 @@ int joy_to_angle(int joy, int *angle) {
     static const int tab[16] = { -1, 0xC0, 0x40, -1, 0x80, 0xA0, 0x60, -1, 0x00, 0xE0, 0x20, -1, -1, -1, -1, -1 };
     int a = tab[joy & 15]; if (a < 0) return 0; *angle = a; return 1;
 }
-int blocked_ahead(Obj *o) { (void)o; return 0; }   /* TODO terrain pixel test */
+/* ---------- terrain collision (LAB_030D / LAB_030E -> LAB_0310 / LAB_032C) ----------
+ * The original keeps a 2-plane "collision buffer" (4(256(A6)), 352x320 circular, 44 bytes/row) beside the 4-plane
+ * background.  LAB_02D1 fills each new 32-row strip with $FF (both planes) as the level scrolls in (strips aligned to
+ * y_orig % 32 == 0), then every tile/object draw that goes through LAB_0310 reads the FIRST part's LIN flag byte
+ * (26(A1)): bit 1 -> slot bit 1 -> LAB_032A clears plane 0 under the sprite's mask (BLTCON0 $0B0A = D = C & ~A),
+ * bit 2 -> slot bit 3 -> LAB_0329 clears plane 1.  Bit 4 (hidden markers _STOP#0-3 = flags $14) only suppresses the
+ * visible draw (slot bit 7 -> LAB_0333).  The mask is the 5th plane the loader builds = (pixel != trans).
+ * The test (slot flags |= $84 -> LAB_032C): for every part, blit A = sprite mask, C = plane (plane 0 when 161(A6)
+ * set = LAB_030D/mode 1, plane 1 when clear = LAB_030E/mode 0) with minterm $50 = A & ~C, no D; BLTZERO clear
+ * (some mask pixel over a CLEARED plane bit) -> 162(A6) = hit.  So: mode 0 hits tiles whose frame flags have bit 2
+ * (value 4: walls, buildings, _STOP markers), mode 1 hits tiles with bit 1 (value 2: softer obstacles); a pixel
+ * counts once marked by ANY such tile (marks are never undone).  Geometry per part (LAB_031D..LAB_0324): x0 = x - cx
+ * must satisfy -32 < x0 < 320 (else the part is skipped), rows are clipped to screen rows 0..255 (y - 3542 - cy), and
+ * there is no horizontal clip: pixels at x0 < 0 land in the previous row's hidden margin (x + 352).
+ * Natively the whole level's marks are precomputed in map space (rows indexed by y_orig) at level init. */
+#define COL_W 352
+static uint8_t *colmask; static int col_rows, col_base;     /* row r <-> y_orig = col_base + r; bit0 = plane0 (flag 2), bit1 = plane1 (flag 4) */
+static void col_mark_frame(const SwivFrame *F, int x, int yo) {
+    int fl0 = F->parts[0].flags, bits = ((fl0 & 2) ? 1 : 0) | ((fl0 & 4) ? 2 : 0);
+    if (!bits) return;
+    for (int i = 0; i < F->nparts; i++) {
+        const SwivPart *p = &F->parts[i]; int x0 = x - p->cx, y0 = yo - p->cy;
+        if (x0 <= -32 || x0 >= 320) continue;
+        int wd = (p->w + 15) / 16; if (p->dsz < (uint32_t)(wd * 8 * p->h)) continue;
+        for (int yy = 0; yy < p->h; yy++) {
+            const uint8_t *row = p->data + (size_t)yy * 8 * wd;
+            for (int xx = 0; xx < p->w; xx++) {
+                int j = xx >> 4, bit = 0x8000 >> (xx & 15), v = 0;
+                for (int k = 0; k < 4; k++) if (((row[(k * wd + j) * 2] << 8) | row[(k * wd + j) * 2 + 1]) & bit) v |= 1 << k;
+                if (v == p->trans) continue;
+                int px = x0 + xx, py = y0 + yy;
+                if (px < 0) { px += COL_W; py--; if ((py + 1) % 32 == 0) continue; }   /* wrapped into the previous row = the previous strip only if it was filled earlier */
+                int r = py - col_base; if (r < 0 || r >= col_rows) continue;
+                colmask[(size_t)r * COL_W + px] |= (uint8_t)bits;
+            }
+        }
+    }
+}
+static void col_build(void) {
+    free(colmask);
+    col_rows = eng_map.height + 2 * SWIV_MARGIN; col_base = 0xE9C0 - eng_map.height - SWIV_MARGIN;
+    colmask = calloc((size_t)col_rows * COL_W, 1);
+    for (int i = 0; i < eng_map.ntiles; i++) { const SwivFrame *F = frame_of_gfx((uint16_t)eng_map.tiles[i].gfx); if (F) col_mark_frame(F, eng_map.tiles[i].x, 0xE9C0 - eng_map.tiles[i].y); }
+    for (int i = 0; i < eng_map.nobjs; i++)  { const SwivFrame *F = frame_of_gfx((uint16_t)eng_map.objs[i].gfx);  if (F) col_mark_frame(F, eng_map.objs[i].x, 0xE9C0 - eng_map.objs[i].y); }   /* ROTOBASE#12 / ORB#0 mark when drawn */
+}
+int eng_terrain_at(int x, int yo, int mode) {
+    if (x < 0) { x += COL_W; yo--; }
+    int r = yo - col_base; if (x < 0 || x >= COL_W || r < 0 || r >= col_rows) return 0;
+    return (colmask[(size_t)r * COL_W + x] >> (mode ? 0 : 1)) & 1;
+}
+int eng_terrain_test(Obj *o, int mode) {
+    const SwivFrame *F = frame_of_gfx(o->animA.frame); if (!F || !colmask) return 0;
+    int x = (int16_t)(o->x >> 16), y = (int16_t)(o->y >> 16);
+    for (int i = 0; i < F->nparts; i++) {
+        const SwivPart *p = &F->parts[i]; int x0 = x - p->cx, sy = (int16_t)(y - g.scroll3542) - p->cy;
+        if (x0 <= -32 || x0 >= 320) continue;
+        int wd = (p->w + 15) / 16; if (p->dsz < (uint32_t)(wd * 8 * p->h)) continue;
+        for (int yy = 0; yy < p->h; yy++) {
+            if (sy + yy < 0 || sy + yy >= 256) continue;                 /* slot window 16/18 = 0..256 */
+            const uint8_t *row = p->data + (size_t)yy * 8 * wd; int yo = (int)(uint16_t)g.scroll3542 + sy + yy;
+            for (int xx = 0; xx < p->w; xx++) {
+                int j = xx >> 4, bit = 0x8000 >> (xx & 15), v = 0;
+                for (int k = 0; k < 4; k++) if (((row[(k * wd + j) * 2] << 8) | row[(k * wd + j) * 2 + 1]) & bit) v |= 1 << k;
+                if (v != p->trans && eng_terrain_at(x0 + xx, yo, mode)) return 1;
+            }
+        }
+    }
+    return 0;
+}
+int blocked_ahead(Obj *o) {                          /* LAB_067A = LAB_067B(mode 0): move by 2*(vx,vy), test, restore */
+    o->x += o->vx * 2; o->y += o->vy * 2;
+    int r = eng_terrain_test(o, 0);
+    o->x -= o->vx * 2; o->y -= o->vy * 2;
+    return r;
+}
 
 /* ---------- misc ---------- */
 uint32_t rng(void) {
@@ -369,6 +443,7 @@ void eng_init(SwivDisk *d, int level) {
     nrecs = eng_map.ntiles + eng_map.nobjs; recs = malloc(sizeof(SwivRec) * nrecs); next_rec = 0;
     memcpy(recs, eng_map.tiles, sizeof(SwivRec) * eng_map.ntiles); memcpy(recs + eng_map.ntiles, eng_map.objs, sizeof(SwivRec) * eng_map.nobjs);
     qsort(recs, nrecs, sizeof(SwivRec), cmp_seq);   /* original record order */
+    col_build();
     scroll_acc = 0;
 }
 void eng_spawn_map_object(int x, int mapy, uint16_t gfx, int type) {

@@ -8,16 +8,18 @@
 #include <string.h>
 extern void player_start(void); extern void player_vbl(void);
 extern int player_input_dx, player_input_dy, player_input_fire;
+extern int player2_input_dx, player2_input_dy, player2_input_fire;
 int main(int argc, char **argv) {
-    if (argc < 4) { fprintf(stderr, "usage: simrun LEVEL VBLS OUT [--adf PATH] [--fire]\n"); return 2; }
-    const char *adf = "/home/jon/swiv-amiga-re/SWIVFIX.ADF"; int fire = 0;
-    for (int i = 4; i < argc; i++) { if (!strcmp(argv[i], "--adf")) adf = argv[++i]; else if (!strcmp(argv[i], "--fire")) fire = 1; }
+    if (argc < 4) { fprintf(stderr, "usage: simrun LEVEL VBLS OUT [--adf PATH] [--fire] [--jeep DX DY]\n"); return 2; }
+    const char *adf = "/home/jon/swiv-amiga-re/SWIVFIX.ADF"; int fire = 0, jeep = 0, jdx = 0, jdy = 0;
+    for (int i = 4; i < argc; i++) { if (!strcmp(argv[i], "--adf")) adf = argv[++i]; else if (!strcmp(argv[i], "--fire")) fire = 1; else if (!strcmp(argv[i], "--jeep")) { jeep = 1; jdx = atoi(argv[++i]); jdy = atoi(argv[++i]); } }
     SwivDisk d; if (swiv_open(&d, adf)) return 1;
     eng_init(&d, atoi(argv[1])); player_start();
     FILE *f = fopen(argv[3], "w");
     int vbls = atoi(argv[2]);
     for (int v = 1; v <= vbls; v++) {
         player_input_fire = fire && ((v / 50) & 1);
+        if (jeep) { player2_input_fire = v < 20; player2_input_dx = v > 40 ? jdx : 0; player2_input_dy = v > 40 ? jdy : 0; }   /* --jeep: port 1 fire joins the jeep, then holds a direction */
         eng_vbl(); player_vbl();
         FOR_EACH_OBJ(o) {
             fprintf(f, "%d %06x %04x %d %d %d %02x %d %d %s %04x %d\n", v, o->id, o->gfxset ? o->gfxset : o->animA.frame,
