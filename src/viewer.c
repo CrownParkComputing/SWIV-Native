@@ -295,9 +295,8 @@ int main(int argc, char **argv) {
             } else if (r == FE_PLAY && fe_game) {
                 mode = 2; game_paused = 0;
             } else {
-                FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0); h.mode = j.mode = FE_HUD_IDLE;
                 if (fe_game && game_on) { game_on = 0; }
-                fe_draw_hud(buf, &h, &j);
+                /* attract screens: no status line over the pictures (scores live in the bottom bar) */
             }
             snprintf(status, sizeof status, "S.W.I.V.  (C) 1991 The Sales Curve / Storm  --  native  --  front end state %d", r);
         } else if (mode == 2) {
