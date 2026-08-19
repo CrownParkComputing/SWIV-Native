@@ -55,6 +55,7 @@ void boss_smoke(Obj *o) {
 /* LAB_0616: homing bullet */
 static void bullet_script(Obj *o) {
     enemy_init(o, 0x0802, 38, -16, 1, 7, 5);
+    sfx(SFX_HOMING, o->x >> 16);   /* LAB_03FE (homing bullet) */
     o->flags367 |= F_SCREEN_LOCKED | F_NO_SHADOW; stop(o);
     int tx, ty; alternate_player(&tx, &ty); o->w[0] = g.alternate168;   /* remember which player (w[0] = player choice) */
     o->z = 32 << 16; o->margin = 0; o->speed = 0x300; o->angle = (uint8_t)o->w[8];

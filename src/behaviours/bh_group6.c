@@ -34,7 +34,7 @@ static void run_until_signalled(Obj *o) { if (!eng_signalled(o)) while (!step(o)
 /* LAB_05E9 @ $213cba: flame projectile (duplicated from bh_group5.c) */
 static const int16_t FLAME_ANIM[] = { A_RATE(4), 0x0601, 0x0801, A_LOOP, A_END };
 static void fx_flame(Obj *o) {
-    sfx(SFX_SHOT, XI(o));
+    sfx(SFX_FIREBALL, XI(o));   /* LAB_05E9 -> LAB_03CC */
     enemy_init(o, 0x0601, 6, -16, 0, 0, 3);
     stop(o); o->flags367 |= F_SCREEN_LOCKED | F_NO_SHADOW; o->margin = 0;
     anim_start(o, FLAME_ANIM);

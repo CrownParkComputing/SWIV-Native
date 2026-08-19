@@ -191,7 +191,8 @@ void smart_bomb(Obj *o);                            /* LAB_062B */
 void screen_shake(Obj *o);                          /* LAB_0817 (yields twice) */
 void boss_enter(void); void boss_leave(Obj *o);     /* LAB_07B4 / LAB_07B5 */
 void sfx(int id, int x);                            /* LAB_03xx family: id = SFX_* */
-enum { SFX_PICKUP, SFX_BIGEXPL, SFX_EXPL1, SFX_EXPL2, SFX_BOMB, SFX_HIT, SFX_SHOT, SFX_MISSILE, SFX_PLOP, SFX_JUMP, SFX_CANNON, SFX_ALARM, SFX_FLAME, SFX_EXTRALIFE, SFX_COUNT };
+enum { SFX_PICKUP, SFX_BIGEXPL, SFX_EXPL1, SFX_EXPL2, SFX_BOMB, SFX_HIT, SFX_SHOT, SFX_MISSILE, SFX_PLOP, SFX_JUMP, SFX_CANNON, SFX_ALARM, SFX_FLAME, SFX_EXTRALIFE,
+       SFX_RICOCHET, SFX_JET, SFX_BOMB_WHISTLE, SFX_FIREBALL, SFX_BOSS_HIT, SFX_WARBLE, SFX_TURRET_SHOT, SFX_TAKEOFF, SFX_ENEMY_DESTROYED, SFX_TOKEN, SFX_HOMING, SFX_GAMESTART, SFX_COUNT };
 extern const char *sfx_event_names[SFX_COUNT];
 
 /* ---------- render list (filled by step) ---------- */
