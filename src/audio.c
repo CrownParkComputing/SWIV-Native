@@ -32,6 +32,8 @@ static void bank_postprocess(int i) {
     int16_t *pcm = bank_pcm[i]; int fr = bank_frames[i]; if (!pcm || fr <= 0) return;
     double a = 1.0 - exp(-2.0 * 3.14159265 * 4000.0 / 22050.0), y1 = 0, y2 = 0;   /* Amiga output filter ~4 kHz */
     for (int k = 0; k < fr; k++) { y1 += a * (pcm[k] - y1); y2 += a * (y1 - y2); pcm[k] = (int16_t)y2; }
+    /* A500 stereo blend gain (the bank renders the nearer ear at 0.75 own + 0.25 other; x1.8 restores full-scale chords) */
+    for (int k = 0; k < fr; k++) { int v = (int)(pcm[k] * 1.8f); pcm[k] = (int16_t)(v > 32767 ? 32767 : v < -32768 ? -32768 : v); }
 }
 static void *bank_worker(void *arg) {
     SwivDisk *d = arg;
