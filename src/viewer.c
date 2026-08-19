@@ -277,40 +277,22 @@ int main(int argc, char **argv) {
         DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, 0, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
         int by = VIEW_H * SCALE;
         DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
-        static int sel_event = -1, bank_page = 0;
-        if (mode == 4) {
-            /* SFX debug: single scrolling list of the bank on the left (mouse wheel / drag / buttons), events on the right */
-            static float bank_scroll = 0; int nb = audio_bank_count();
-            int row_h = 64, list_x = 16, list_y = 60, list_w = 640, list_h = VIEW_H * SCALE - 140;
-            ui_text("SOUND BANK - click to hear (wheel to scroll)", list_x, 16, 28, RAYWHITE);
-            bank_scroll -= GetMouseWheelMove() * row_h * 2;
-            Vector2 mp = GetMousePosition();
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && mp.x > list_x + list_w - 40 && mp.x < list_x + list_w && mp.y > list_y && mp.y < list_y + list_h)
-                bank_scroll = (mp.y - list_y) / list_h * (nb * row_h - list_h);      /* scrollbar drag */
-            float maxs = nb * row_h - list_h; if (maxs < 0) maxs = 0; if (bank_scroll < 0) bank_scroll = 0; if (bank_scroll > maxs) bank_scroll = maxs;
-            BeginScissorMode(list_x, list_y, list_w, list_h);
-            for (int k = 0; k < nb; k++) {
-                float y = list_y + k * row_h - bank_scroll; if (y + row_h < list_y || y > list_y + list_h) continue;
-                char l[128]; snprintf(l, sizeof l, "%s   %s", audio_bank_name(k), audio_bank_label(k));
-                if (button((Rectangle){list_x, y, list_w - 48, row_h - 6}, l, sel_event >= 0 && audio_event_bank(sel_event) == k)) { audio_bank_play(k); if (sel_event >= 0) audio_event_set(sel_event, k); }
-            }
-            EndScissorMode();
-            DrawRectangle(list_x + list_w - 36, list_y, 28, list_h, (Color){50, 50, 58, 255});
-            if (maxs > 0) DrawRectangle(list_x + list_w - 36, list_y + (int)(bank_scroll / maxs * (list_h - 60)), 28, 60, (Color){120, 120, 130, 255});
-            if (button((Rectangle){list_x, list_y + list_h + 8, 120, 48}, "UP", 0)) bank_scroll -= row_h * 4;
-            if (button((Rectangle){list_x + 130, list_y + list_h + 8, 120, 48}, "DOWN", 0)) bank_scroll += row_h * 4;
-            int ex0 = list_x + list_w + 40, ey0 = 16;
-            ui_text("GAME EVENT -> sound", ex0, ey0, 28, RAYWHITE);
-            ui_text("select an event, then click a sound", ex0, ey0 + 30, 20, LIGHTGRAY);
+                if (mode == 4) {
+            /* SFX debug: one row per game event: description, current sound, < > to change (plays it), PLAY to hear */
+            int nb = audio_bank_count(); int x0 = 24, y0 = 24, row_h = 64;
+            ui_text("SOUND EFFECTS - pick the original routine for each game event", x0, y0, 28, RAYWHITE);
             for (int e = 0; e < SFX_COUNT; e++) {
-                char l[96]; int b = audio_event_bank(e);
-                snprintf(l, sizeof l, "%-14s %s", sfx_event_names[e], b >= 0 ? audio_bank_name(b) : "(builtin)");
-                if (button((Rectangle){ex0, ey0 + 60 + e * 58, 560, 52}, l, sel_event == e)) { sel_event = (sel_event == e) ? -1 : e; if (sel_event >= 0 && b >= 0) audio_bank_play(b); else if (sel_event >= 0) sfx(e, 160); }
+                int y = y0 + 50 + e * row_h; int b = audio_event_bank(e);
+                char l[128];
+                ui_text(sfx_event_names[e], x0, y + 14, 26, (Color){255, 238, 136, 255});
+                if (button((Rectangle){x0 + 260, y, 56, 52}, "<", 0)) { b = (b <= 0 ? nb : b) - 1; audio_event_set(e, b); audio_bank_play(b); }
+                snprintf(l, sizeof l, "%s  %s", b >= 0 ? audio_bank_name(b) : "(builtin)", b >= 0 ? audio_bank_label(b) : "");
+                if (button((Rectangle){x0 + 324, y, 640, 52}, l, 0)) sfx(e, 160);
+                if (button((Rectangle){x0 + 972, y, 56, 52}, ">", 0)) { b = (b + 1) % (nb ? nb : 1); audio_event_set(e, b); audio_bank_play(b); }
             }
-            int by2 = ey0 + 60 + SFX_COUNT * 58 + 10;
-            if (button((Rectangle){ex0, by2, 170, 52}, "SAVE", 0)) audio_map_save();
-            if (button((Rectangle){ex0 + 180, by2, 170, 52}, "PLAY", 0)) { mode = 2; }
-            if (button((Rectangle){ex0 + 360, by2, 170, 52}, "TITLE", 0)) mode = 3;
+            int by2 = y0 + 50 + SFX_COUNT * row_h + 12;
+            if (button((Rectangle){x0, by2, 170, 52}, "SAVE", 0)) audio_map_save();
+            if (button((Rectangle){x0 + 180, by2, 170, 52}, "TITLE", 0)) mode = 3;
         }
         int dev = debug_ui || (mode == 0 || mode == 1);      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
