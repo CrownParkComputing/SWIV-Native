@@ -4,6 +4,8 @@
 #include "engine/engine.h"
 extern void player_start(void); extern void player_vbl(void);
 extern void audio_init(SwivDisk *d); extern void audio_update(void); extern void audio_music_play(SwivDisk *d, const char *name);
+extern int audio_bank_count(void); extern const char *audio_bank_name(int i); extern const char *audio_bank_label(int i); extern void audio_bank_play(int i);
+extern int audio_event_bank(int ev); extern void audio_event_set(int ev, int bank); extern void audio_map_save(void);
 extern int player_input_dx, player_input_dy, player_input_fire;
 extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
@@ -179,7 +181,10 @@ int main(int argc, char **argv) {
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
         audio_update(); audio_music_play(&disk, mode == 3 ? "AMTITUNE.MOD" : NULL);
-        if (mode == 3) {
+        if (mode == 4) {
+            memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
+            snprintf(status, sizeof status, "SFX DEBUG: click a sound to hear it; select an event (right) then a sound to assign; SAVE writes sfxmap.txt");
+        } else if (mode == 3) {
             if (!cover) decode_cover();
             if (cover) memcpy(buf, cover, sizeof(Color) * VIEW_W * VIEW_H); else memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
             int start = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_LEFT_CONTROL) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
@@ -268,6 +273,30 @@ int main(int argc, char **argv) {
         DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, 0, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
         int by = VIEW_H * SCALE;
         DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
+        static int sel_event = -1, bank_page = 0;
+        if (mode == 4) {
+            int nb = audio_bank_count(); int per = 24; int col_w = 230, bx0 = 8, ey0 = 8;
+            DrawText("SOUND BANK (original routines)", bx0, ey0, 18, RAYWHITE);
+            for (int i = 0; i < per; i++) {
+                int k = bank_page * per + i; if (k >= nb) break;
+                char l[96]; snprintf(l, sizeof l, "%s  %s", audio_bank_name(k), audio_bank_label(k));
+                int col = i / 12, row = i % 12;
+                if (button((Rectangle){bx0 + col * col_w, ey0 + 26 + row * 40, col_w - 6, 36}, l, sel_event >= 0 && audio_event_bank(sel_event) == k)) {
+                    audio_bank_play(k); if (sel_event >= 0) audio_event_set(sel_event, k);
+                }
+            }
+            if (nb > per) { if (button((Rectangle){bx0, ey0 + 26 + 12 * 40 + 4, 100, 32}, "< PAGE", 0)) bank_page = (bank_page + (nb + per - 1) / per - 1) % ((nb + per - 1) / per); if (button((Rectangle){bx0 + 110, ey0 + 26 + 12 * 40 + 4, 100, 32}, "PAGE >", 0)) bank_page = (bank_page + 1) % ((nb + per - 1) / per); }
+            int ex0 = bx0 + 2 * col_w + 30;
+            DrawText("GAME EVENT -> sound", ex0, ey0, 18, RAYWHITE);
+            for (int e = 0; e < SFX_COUNT; e++) {
+                char l[96]; int b = audio_event_bank(e);
+                snprintf(l, sizeof l, "%-14s %s", sfx_event_names[e], b >= 0 ? audio_bank_name(b) : "(builtin)");
+                if (button((Rectangle){ex0, ey0 + 26 + e * 40, 420, 36}, l, sel_event == e)) { sel_event = (sel_event == e) ? -1 : e; if (sel_event >= 0 && b >= 0) audio_bank_play(b); else if (sel_event >= 0) sfx(e, 160); }
+            }
+            if (button((Rectangle){ex0, ey0 + 26 + SFX_COUNT * 40 + 4, 120, 36}, "SAVE", 0)) audio_map_save();
+            if (button((Rectangle){ex0 + 130, ey0 + 26 + SFX_COUNT * 40 + 4, 120, 36}, "PLAY", 0)) { mode = 2; }
+            if (button((Rectangle){ex0 + 260, ey0 + 26 + SFX_COUNT * 40 + 4, 120, 36}, "BACK", 0)) mode = 2;
+        }
         int dev = debug_ui || (mode == 0 || mode == 1);      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) DrawText(status, 8, by + 4, 16, RAYWHITE);
         if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; DrawText(t, (WIN_W - MeasureText(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); DrawText(t, (WIN_W - MeasureText(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
@@ -303,6 +332,7 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){500, r2, 110, bh}, "RESTART", 0)) { eng_init(&disk, eng_level); player_start(); }
                 if (button((Rectangle){620, r2, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){730, r2, 100, bh}, "SPRITES", 0)) mode = 1;
+                if (button((Rectangle){840, r2, 100, bh}, "SFX", 0)) mode = 4;
             } else DrawText("drag left half to steer, right half fires  (or arrows + space)", 340, r1 + 12, 16, LIGHTGRAY);
         } else if (mode == 0) {
             for (int k = 0; k < 7; k++) {

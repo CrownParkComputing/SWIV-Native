@@ -390,7 +390,7 @@ static void plat_gun(Obj *o) {                      /* LAB_073B @ $2161f6 */
     for (;;) {                                      /* LAB_073D */
         anim_start(o, PLAT_GUN_ANIM); set_frame(o, 0x2842);
         if (wait_vbls(o, 24)) return;
-        sfx(SFX_SHOT, XW(o));                       /* LAB_03D0 (unknown sound: cannon) */
+        sfx(SFX_CANNON, XW(o));                     /* LAB_03D0 cannon */
         spawn_prio(plat_shell, 100);                /* LAB_04D2 with D0 = sound routine's return (unknown) */
         if (wait_vbls(o, 120)) return;
     }

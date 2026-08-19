@@ -83,6 +83,7 @@ static void bullets_move(void) {
         if (b->state < 0) {                                        /* flying */
             if (b->box && (b->box->hits & 0x20)) {                 /* LAB_04AF: hit something solid -> PLOP */
                 b->dx = b->dy = 0; b->state = 4; bullet_unlink(b);
+                sfx(SFX_PLOP, b->x);                                   /* native event hook: bullet impact (assign in SFX debug) */
                 goto plop;
             }
             for (int v = 0; v < VBLS; v++) { b->x += b->dx; b->y += b->dy; }   /* LAB_04A9: once per elapsed VBL */
@@ -382,7 +383,7 @@ static void jeep_common(Obj *o, const JeepForm *f) {
         o->w[3] = 15;
         o->box.mask = (o->box.mask & ~0x10) | 0x08;                /* airborne: becomes a heli-class box */
         on_event(o, 1, die_0676); off_event(o, 2);                 /* LAB_0506 + LAB_050D */
-        sfx(SFX_MISSILE, XW(o));                                   /* LAB_03D3 (jump sound; nearest SFX_) */
+        sfx(SFX_JUMP, XW(o));                                      /* LAB_03D3 jeep jump */
         o->speed = f->jump_speed; o->vz = 0x1d000; o->az = (int32_t)0xfffff000;
         for (;;) {                                                 /* LAB_066B / LAB_0656 */
             swap_check(o, f->toB);

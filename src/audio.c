@@ -4,12 +4,24 @@
 #include "engine/engine.h"
 #include "raylib.h"
 #include <xmp.h>
+#include "sfx_bank.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static Sound snd[8]; static int ready;
+static Sound snd[SFX_COUNT]; static int ready;
+/* optional synthesised bank (src/sfx_bank.c) */
+int sfx_bank_count(void) __attribute__((weak)); const SfxDesc *sfx_bank_desc(int i) __attribute__((weak)); int16_t *sfx_bank_render(int i, SwivDisk *d, int *frames_out) __attribute__((weak));
+static Sound bank_snd[64]; static int bank_n; static int event_bank[SFX_COUNT]; static SwivDisk *adisk;
+int audio_bank_count(void) { return bank_n; }
+const char *audio_bank_name(int i) { return sfx_bank_desc ? sfx_bank_desc(i)->name : ""; }
+const char *audio_bank_label(int i) { return sfx_bank_desc ? sfx_bank_desc(i)->label : ""; }
+void audio_bank_play(int i) { if (i >= 0 && i < bank_n && bank_snd[i].frameCount) PlaySound(bank_snd[i]); }
+int  audio_event_bank(int ev) { return event_bank[ev]; }
+void audio_event_set(int ev, int bank) { if (ev >= 0 && ev < SFX_COUNT) event_bank[ev] = bank; }
+void audio_map_save(void) { FILE *f = fopen("sfxmap.txt", "w"); if (!f) return; for (int e = 0; e < SFX_COUNT; e++) fprintf(f, "%s %s\n", sfx_event_names[e], event_bank[e] >= 0 ? audio_bank_name(event_bank[e]) : "-"); fclose(f); }
+static void audio_map_load(void) { FILE *f = fopen("sfxmap.txt", "r"); char ev[64], nm[64]; if (!f) return; while (fscanf(f, "%63s %63s", ev, nm) == 2) for (int e = 0; e < SFX_COUNT; e++) if (!strcmp(ev, sfx_event_names[e])) { event_bank[e] = -1; for (int i = 0; i < bank_n; i++) if (!strcmp(nm, audio_bank_name(i))) event_bank[e] = i; } fclose(f); }
 static xmp_context xc; static AudioStream mstream; static int music_on; static int16_t mbuf[2048];   /* 1024 stereo frames = the stream buffer size */
 
 /* Paula emulation for the original's sound routines (LAB_03C1.. in AMPROG): a voice plays
@@ -61,7 +73,17 @@ void audio_init(SwivDisk *d) {
     noise8 = malloc(256); uint32_t r = 1; for (int k = 0; k < 256; k++) { r = r * 1103515245u + 12345u; noise8[k] = (int8_t)(r >> 24); }
     voice(noise8, 256, 1, 0x60, 64, 50, 0); snd[SFX_MISSILE] = finish();                       /* LAB_040C approx (period $60, 50 frames) */
     voice(WAVE_SHOT, 16, 1, 0x200, 40, 10, 0); voice(WAVE_SHOT, 16, 1, 0x100, 40, 10, 10); snd[SFX_PICKUP] = finish();   /* LAB_03F3 two-tone approx */
-    ready = 1;
+    ready = 1; adisk = d;
+    for (int e = 0; e < SFX_COUNT; e++) event_bank[e] = -1;
+    if (sfx_bank_count) {
+        bank_n = sfx_bank_count(); if (bank_n > 64) bank_n = 64;
+        for (int i = 0; i < bank_n; i++) {
+            int fr = 0; int16_t *pcm = sfx_bank_render(i, d, &fr);
+            if (pcm && fr > 0) { Wave w = { .frameCount = fr, .sampleRate = 22050, .sampleSize = 16, .channels = 1, .data = pcm }; bank_snd[i] = LoadSoundFromWave(w); }
+            free(pcm);
+        }
+        audio_map_load();
+    }
     xc = xmp_create_context();
     SetAudioStreamBufferSizeDefault(1024); mstream = LoadAudioStream(44100, 16, 2);
 }
@@ -83,7 +105,9 @@ void audio_update(void) {
     while (IsAudioStreamProcessed(mstream)) { xmp_play_buffer(xc, mbuf, sizeof mbuf, 0); UpdateAudioStream(mstream, mbuf, 1024); }
 }
 void sfx(int id, int x) {
-    if (!ready || id < 0 || id >= 8 || snd[id].frameCount == 0) return;
-    SetSoundPan(snd[id], 1.0f - (float)x / 320.0f * 0.6f - 0.2f);
-    PlaySound(snd[id]);
+    if (!ready || id < 0 || id >= SFX_COUNT) return;
+    Sound s = (event_bank[id] >= 0 && bank_snd[event_bank[id]].frameCount) ? bank_snd[event_bank[id]] : snd[id];
+    if (!s.frameCount) return;
+    SetSoundPan(s, 1.0f - (float)x / 320.0f * 0.6f - 0.2f);
+    PlaySound(s);
 }
