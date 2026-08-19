@@ -37,10 +37,10 @@ static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras, 6 options */
 /* ---- options (options.txt) ---- */
-static struct { int sfx_vol, music_vol, fullscreen, scanlines; } opt = { 8, 6, 0, 0 };
-static void options_apply(void) { audio_set_volumes(opt.sfx_vol / 10.0f, opt.music_vol / 10.0f); if (opt.fullscreen != IsWindowFullscreen()) ToggleFullscreen(); }
-static void options_save(void) { FILE *f = fopen("options.txt", "w"); if (f) { fprintf(f, "sfx %d\nmusic %d\nfullscreen %d\nscanlines %d\n", opt.sfx_vol, opt.music_vol, opt.fullscreen, opt.scanlines); fclose(f); } }
-static void options_load(void) { FILE *f = fopen("options.txt", "r"); char k[32]; int v; if (!f) return; while (fscanf(f, "%31s %d", k, &v) == 2) { if (!strcmp(k, "sfx")) opt.sfx_vol = v; else if (!strcmp(k, "music")) opt.music_vol = v; else if (!strcmp(k, "fullscreen")) opt.fullscreen = v; else if (!strcmp(k, "scanlines")) opt.scanlines = v; } fclose(f); }
+static struct { int sfx_vol, music_vol, fullscreen, scanlines, difficulty; } opt = { 8, 6, 0, 0, 1 };   /* difficulty 0 easy 1 normal 2 hard */
+static void options_apply(void) { audio_set_volumes(opt.sfx_vol / 10.0f, opt.music_vol / 10.0f); if (opt.fullscreen != IsWindowFullscreen()) ToggleFullscreen(); eng_difficulty_mode = opt.difficulty; }
+static void options_save(void) { FILE *f = fopen("options.txt", "w"); if (f) { fprintf(f, "sfx %d\nmusic %d\nfullscreen %d\nscanlines %d\ndifficulty %d\n", opt.sfx_vol, opt.music_vol, opt.fullscreen, opt.scanlines, opt.difficulty); fclose(f); } }
+static void options_load(void) { FILE *f = fopen("options.txt", "r"); char k[32]; int v; if (!f) return; while (fscanf(f, "%31s %d", k, &v) == 2) { if (!strcmp(k, "sfx")) opt.sfx_vol = v; else if (!strcmp(k, "music")) opt.music_vol = v; else if (!strcmp(k, "fullscreen")) opt.fullscreen = v; else if (!strcmp(k, "scanlines")) opt.scanlines = v; else if (!strcmp(k, "difficulty")) opt.difficulty = v; } fclose(f); }
 /* front end (src/frontend.c): the title/attract/level-start/game-over sequence owns mode 3 and drives the
  * engine through FE_START_GAME / FE_LEVEL_INTRO / FE_PLAY; fe_game = the current game was started by it */
 static int fe_game = 0, fe_state = FE_ATTRACT, idle_vbl = 0, prev_joined_h = 0, prev_joined_j = 0, fe_req_sent = 0, level_base_px = 0;
@@ -440,12 +440,15 @@ int main(int argc, char **argv) {
             if (button((Rectangle){x0 + 560, y0 + 60 + rh, 56, 48}, "+", 0) && opt.music_vol < 10) { opt.music_vol++; options_apply(); }
             ui_text("Fullscreen", x0, y0 + 70 + 2 * rh, 26, (Color){255, 238, 136, 255});
             if (button((Rectangle){x0 + 420, y0 + 60 + 2 * rh, 196, 48}, opt.fullscreen ? "ON" : "OFF", opt.fullscreen)) { opt.fullscreen ^= 1; options_apply(); }
-            ui_text("Controls", x0, y0 + 70 + 3 * rh, 26, (Color){255, 238, 136, 255});
-            ui_text("Port 2 helicopter: arrows + Space (or first gamepad: stick/d-pad, A/X/trigger fire)", x0, y0 + 110 + 3 * rh, 22, LIGHTGRAY);
-            ui_text("Port 1 jeep: WASD + Left Shift/Ctrl (or second gamepad)", x0, y0 + 140 + 3 * rh, 22, LIGHTGRAY);
-            ui_text("P = pause, ESC (while paused) = menu; touch: left half steer, right half fire", x0, y0 + 170 + 3 * rh, 22, LIGHTGRAY);
-            if (button((Rectangle){x0, y0 + 230 + 3 * rh, 170, 52}, "SAVE", 0)) options_save();
-            if (button((Rectangle){x0 + 180, y0 + 230 + 3 * rh, 170, 52}, "TITLE", 0)) { options_save(); mode = 3; }
+            ui_text("Difficulty", x0, y0 + 70 + 3 * rh, 26, (Color){255, 238, 136, 255});
+            { static const char *DN[3] = { "EASY", "NORMAL", "HARD" }; for (int d = 0; d < 3; d++) if (button((Rectangle){x0 + 420 + d * 130, y0 + 60 + 3 * rh, 124, 48}, DN[d], opt.difficulty == d)) { opt.difficulty = d; options_apply(); } }
+            ui_text("easy: half the enemies    hard: 1.5x aerial, 2x ground (applies from the next game)", x0, y0 + 110 + 3 * rh, 20, LIGHTGRAY);
+            ui_text("Controls", x0, y0 + 150 + 3 * rh, 26, (Color){255, 238, 136, 255});
+            ui_text("Port 2 helicopter: arrows + Space (or first gamepad: stick/d-pad, A/X/trigger fire)", x0, y0 + 190 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("Port 1 jeep: WASD + Left Shift/Ctrl (or second gamepad)", x0, y0 + 220 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("P = pause, ESC (while paused) = menu; touch: left half steer, right half fire", x0, y0 + 250 + 3 * rh, 22, LIGHTGRAY);
+            if (button((Rectangle){x0, y0 + 300 + 3 * rh, 170, 52}, "SAVE", 0)) options_save();
+            if (button((Rectangle){x0 + 180, y0 + 300 + 3 * rh, 170, 52}, "TITLE", 0)) { options_save(); mode = 3; }
         }
         static float extra_scroll = 0;
         if (mode == 5) {
@@ -539,7 +542,7 @@ int main(int argc, char **argv) {
             fe_text_strip(strip, SW, line);
             for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? (Color){200, 200, 200, 255} : (Color){0, 0, 0, 0};
             UpdateTexture(stex2, simg);
-            DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + 36, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
+            DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + BAR_H - 30, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);   /* stats at the foot of the bar, gap from the score line */
             if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
         }
         if (mode == 3) {
@@ -568,7 +571,7 @@ int main(int argc, char **argv) {
         }
         if (mode == 2) {
             if (IsKeyPressed(KEY_P)) game_paused ^= 1;
-            if (game_paused && IsKeyPressed(KEY_ESCAPE)) { if (fe_game) { game_paused = 0; fe_key(FE_KEY_ESC); } else { mode = 3; game_on = 0; game_paused = 0; } }
+            if (game_paused && IsKeyPressed(KEY_ESCAPE)) { mode = 3; game_on = 0; game_paused = 0; fe_game = 0; fe_start_title(); }   /* paused + ESC = straight back to the title */
             if (dev) {
                 if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
                 if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;

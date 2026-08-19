@@ -215,5 +215,7 @@ void eng_vbl(void);                     /* one VBL: scroll + map interpreter; ev
 Obj *eng_first(void); Obj *eng_next(Obj *o);
 #define FOR_EACH_OBJ(v) for (Obj *v = eng_first(); v; v = eng_next(v))
 Script eng_handler_for_gfx(uint16_t gfx);   /* the dispatch table (behaviours/table.c) */
+extern int eng_difficulty_mode;              /* native: 0 easy (half the enemies), 1 normal, 2 hard (1.5x aerial, 2x ground) */
+int eng_is_air_gfx(uint16_t gfx);
 void eng_register_handler(uint16_t gfx, Script s, const char *name);
 #endif

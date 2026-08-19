@@ -450,7 +450,24 @@ void eng_init(SwivDisk *d, int level) {
     col_build();
     scroll_acc = 0;
 }
+void eng_spawn_map_object_one(int x, int mapy, uint16_t gfx, int type);
+int eng_difficulty_mode = 1;
+int eng_is_air_gfx(uint16_t gfx) {
+    static const char *air[] = { "FODDERA", "BIRD", "VTOL", "BLACKJET", "SKYEYEA", "SKYEYEB", "YELLOW", "TRILO", "XEVIOUS", "BUNNY", "GOOSE", "MAMA", "DADA", "JETS", "SEAPLANE", "BOS", "ORB", "INSECTS", "FROG", "EDGE", "TAP", "TILT", "FLAME", "FISH", "AIRMINE", NULL };
+    int id = gfx & 0x1ff; if (id >= g.disk->norder) return 0; const char *n = g.disk->order[id];
+    for (int i = 0; air[i]; i++) if (!strncasecmp(n, air[i], strlen(air[i]))) return 1;
+    return 0;
+}
+static int spawn_counter_air, spawn_counter_ground;
 void eng_spawn_map_object(int x, int mapy, uint16_t gfx, int type) {
+    /* native difficulty: decide how many copies of this record to spawn */
+    int air = eng_is_air_gfx(gfx); int copies = 1;
+    if (eng_difficulty_mode == 0) { int *c = air ? &spawn_counter_air : &spawn_counter_ground; if (((*c)++ & 1)) return; }
+    else if (eng_difficulty_mode == 2) { if (air) { copies = 1 + ((spawn_counter_air++ & 1) == 0); } else copies = 2; }
+    for (int k = 1; k < copies; k++) eng_spawn_map_object_one(x + (k * 40) % 280 - 20, mapy + (air ? 0 : 24), gfx, type);
+    eng_spawn_map_object_one(x, mapy, gfx, type);
+}
+void eng_spawn_map_object_one(int x, int mapy, uint16_t gfx, int type) {
     Script s = eng_handler_for_gfx(gfx); if (!s) return;
     Obj *c = eng_spawn_at(s, 100, NULL); if (!c) return;
     c->x = x << 16; c->y = (int32_t)(int16_t)mapy << 16; c->z = 0; c->w[0] = type; c->clock = &g.clock204; c->time12 = g.clock204;
