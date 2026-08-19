@@ -1,3 +1,4 @@
+#include <stdio.h>
 /* sfx_bank.c -- SWIV sound effects synthesised from the original Paula driver.
  *
  * Source: re/amprog.asm, the INT6 sound driver at LAB_03AD ($2107DC):
