@@ -325,6 +325,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < g.heli.lives68; i++) DrawRectangle(16 + i * 18, 44, 12, 6, (Color){255, 238, 136, 255});
             snprintf(h, sizeof h, "HI %06d", g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score); ui_text(h, (WIN_W - ui_measure(h, 30)) / 2, 10, 30, RAYWHITE);
             snprintf(h, sizeof h, "JEEP %06d", g.jeep.score); ui_text(h, WIN_W - 16 - ui_measure(h, 30), 10, 30, (Color){136, 221, 255, 255});
+            if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
             if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
         }
         if (mode == 3) {
@@ -346,7 +347,7 @@ int main(int argc, char **argv) {
         }
         if (mode == 2) {
             if (IsKeyPressed(KEY_P)) game_paused ^= 1;
-            if (IsKeyPressed(KEY_ESCAPE)) { mode = 3; game_on = 0; }
+            if (game_paused && IsKeyPressed(KEY_ESCAPE)) { mode = 3; game_on = 0; game_paused = 0; }
             if (dev) {
                 if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
                 if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
