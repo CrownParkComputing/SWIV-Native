@@ -333,16 +333,19 @@ void sfx(int id, int x) { (void)id; (void)x; }
  * Records come from the native SwivMap (y grows with level progress); the
  * original's units: y_orig = $E9C0 - y_mine, scroll counts down. */
 SwivMap eng_map; static SwivRec *recs; static int nrecs, next_rec;
-static int cmp_rec(const void *a, const void *b) { const SwivRec *r = a, *s = b; return r->y != s->y ? r->y - s->y : r->seq - s->seq; }
+static int cmp_seq(const void *a, const void *b) { const SwivRec *r = a, *s = b; return r->seq - s->seq; }
 static void map_task(Obj *o) { for (;;) { yield_once(o); } }
+/* LAB_02EB: the record is consumed while the cursor (BEFORE this record's dy) is within
+ * 256 px ahead of the scroll; tiles and objects share the cursor walk. */
 void eng_map_interpreter(void) {
     while (next_rec < nrecs) {
         SwivRec *r = &recs[next_rec];
-        uint16_t yrec = (uint16_t)(0xE9C0 - r->y);
-        if (!((uint16_t)(g.scroll3530 - 0x100) <= yrec)) break;      /* not within 256 px ahead yet */
+        if (!((uint16_t)(g.scroll3530 - 0x100) <= g.cursor3586)) break;
         next_rec++;
+        uint16_t yrec = (uint16_t)(0xE9C0 - r->y);
         g.cursor3586 = yrec;
-        if ((int16_t)(yrec - g.scroll3530) > 0) continue;            /* already behind the reference: consumed, not spawned */
+        if (r->type == 0) continue;                                    /* tile: drawn by the renderer */
+        if ((int16_t)(yrec - g.scroll3530) > 0) continue;             /* behind the reference: consumed, not spawned */
         eng_spawn_map_object(r->x, yrec, (uint16_t)r->gfx, r->type);
     }
 }
@@ -359,8 +362,9 @@ void eng_init(SwivDisk *d, int level) {
     g.heli.name = "Lazy Heli"; g.heli.no = 1; g.jeep.name = "Lazy Jeep"; g.jeep.no = 0; g.jeep.vehicle = 1;
     Obj *m = eng_spawn_at(map_task, 65535, NULL); m->name = "map";
     swiv_map_load(d, level, &eng_map);
-    nrecs = eng_map.nobjs; recs = eng_map.objs; next_rec = 0;
-    qsort(recs, nrecs, sizeof(SwivRec), cmp_rec);   /* ascending native y = descending original y = record order */
+    nrecs = eng_map.ntiles + eng_map.nobjs; recs = malloc(sizeof(SwivRec) * nrecs); next_rec = 0;
+    memcpy(recs, eng_map.tiles, sizeof(SwivRec) * eng_map.ntiles); memcpy(recs + eng_map.ntiles, eng_map.objs, sizeof(SwivRec) * eng_map.nobjs);
+    qsort(recs, nrecs, sizeof(SwivRec), cmp_seq);   /* original record order */
     scroll_acc = 0;
 }
 void eng_spawn_map_object(int x, int mapy, uint16_t gfx, int type) {
