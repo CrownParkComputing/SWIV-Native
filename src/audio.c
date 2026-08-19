@@ -121,8 +121,10 @@ void audio_music_play(SwivDisk *d, const char *name) {
     if (i < 0 || !(p = swiv_load(d, i, &n))) return;
     int rc = xmp_load_module_from_memory(xc, (void *)p, n); fprintf(stderr, "music: %s load=%d\n", name, rc); if (rc != 0) return;
     xmp_start_player(xc, 44100, 0); xmp_set_player(xc, XMP_PLAYER_AMP, 1); xmp_set_player(xc, XMP_PLAYER_MIX, 70);
-    PlayAudioStream(mstream); music_on = 1; snprintf(mcur, sizeof mcur, "%s", name); mdisk = d;
+    SetAudioStreamVolume(mstream, music_gain); PlayAudioStream(mstream); music_on = 1; snprintf(mcur, sizeof mcur, "%s", name); mdisk = d;
 }
+static float sfx_gain = 1.0f, music_gain = 1.0f;
+void audio_set_volumes(float sfxv, float musicv) { sfx_gain = sfxv; music_gain = musicv; if (mstream.buffer) SetAudioStreamVolume(mstream, music_gain); }
 void audio_update(void) {
     if (!music_on) return;
     while (IsAudioStreamProcessed(mstream)) { xmp_play_buffer(xc, mbuf, sizeof mbuf, 0); UpdateAudioStream(mstream, mbuf, 1024); }
@@ -132,5 +134,6 @@ void sfx(int id, int x) {
     Sound s = (event_bank[id] >= 0 && bank_snd[event_bank[id]].frameCount) ? bank_snd[event_bank[id]] : snd[id];
     if (!s.frameCount) return;
     SetSoundPan(s, 1.0f - (float)x / 320.0f * 0.6f - 0.2f);
+    { int b = event_bank[id]; SetSoundVolume(s, sfx_gain * (b >= 0 ? tune[b].vol : 1.0f)); }
     PlaySound(s);
 }
