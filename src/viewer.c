@@ -14,6 +14,7 @@ extern int player2_input_dx, player2_input_dy, player2_input_fire;
 extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,9 +67,28 @@ static FeHud hud_of(const struct Player *p, int intro) {
 static int fire_held_heli(void) { return IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_ENTER) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT); }
 static int fire_held_jeep(void) { return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_MIDDLE_RIGHT); }
 
+/* ---- controller cursor: a virtual pointer driven by the first real gamepad (d-pad / left stick), A = click ---- */
+static Vector2 vptr = { 640, 500 }; static int vptr_on, vclick, vdown, vptr_pad = -1;
+static int real_pad(int nth);
+static void vptr_update(int menus_active) {
+    vclick = 0; vdown = 0;
+    int p = real_pad(0); vptr_pad = p;
+    if (p < 0 || !menus_active) { vptr_on = 0; return; }
+    float ax = GetGamepadAxisMovement(p, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(p, GAMEPAD_AXIS_LEFT_Y);
+    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) ax = -1; if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) ax = 1;
+    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_UP)) ay = -1; if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) ay = 1;
+    if (fabsf(ax) > 0.25f || fabsf(ay) > 0.25f) { vptr.x += ax * 14; vptr.y += ay * 14; vptr_on = 1; }
+    if (vptr.x < 0) vptr.x = 0; if (vptr.x > WIN_W - 1) vptr.x = WIN_W - 1; if (vptr.y < 0) vptr.y = 0; if (vptr.y > WIN_H - 1) vptr.y = WIN_H - 1;
+    if (IsGamepadButtonPressed(p, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { vclick = 1; vptr_on = 1; }
+    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) vdown = 1;
+    if (GetMouseDelta().x != 0 || GetMouseDelta().y != 0 || GetTouchPointCount() > 0) vptr_on = 0;
+}
+static int ui_pressed(void) { return IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || vclick; }
+static int ui_down(void) { return IsMouseButtonDown(MOUSE_BUTTON_LEFT) || vdown; }
+
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
-    Vector2 p = mpos();
+    Vector2 p = vptr_on ? vptr : mpos();
     if (GetTouchPointCount() > 0) p = tpos(0);
     return CheckCollisionPointRec(p, r);
 }
@@ -79,9 +99,9 @@ static int button(Rectangle r, const char *label, int active) {
     int fs = 24; int tw = ui_measure(label, fs);
     while (tw > r.width - 6 && fs > 10) { fs -= 2; tw = ui_measure(label, fs); }
     ui_text(label, r.x + (r.width - tw) / 2, r.y + (r.height - fs) / 2, fs, RAYWHITE);
-    return hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    return hot && ui_pressed();
 }
-static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
+static int held(Rectangle r) { return ui_hit(r) && ui_down(); }
 
 int fe_stat_shots(int p) { return g.stat_shots_p[p & 1]; }
 int fe_difficulty(void) { return eng_difficulty_mode; }
@@ -235,8 +255,32 @@ static void draw_sprite_frame(Color *out, char *palname, size_t pn) {
     swiv_canvas_free(&c); swiv_canvas_free(&big);
 }
 
+#ifdef __ANDROID__
+#include <unistd.h>
+#include <sys/stat.h>
+#include <android_native_app_glue.h>
+struct android_app *GetAndroidApp(void);
+static void android_bootstrap(void) {
+    /* copy the bundled assets (listed in assets/manifest.txt) into the app's internal storage once, then chdir there */
+    struct android_app *app = GetAndroidApp(); const char *dir = app->activity->internalDataPath;
+    mkdir(dir, 0755); chdir(dir);
+    int n = 0; unsigned char *m = LoadFileData("manifest.txt", &n);
+    if (!m) return;
+    char line[256]; int li = 0;
+    for (int i = 0; i <= n; i++) {
+        char c = i < n ? (char)m[i] : '\n';
+        if (c == '\n' || c == '\r') { line[li] = 0; if (li) { if (!FileExists(line)) { char d[256]; snprintf(d, sizeof d, "%s", line); char *sl = strrchr(d, '/'); if (sl) { *sl = 0; char cmd[300]; for (char *q = d; *q; q++) if (*q == '/') { *q = 0; mkdir(d, 0755); *q = '/'; } mkdir(d, 0755); (void)cmd; } int fn = 0; unsigned char *f = LoadFileData(line, &fn); if (f) { SaveFileData(line, f, fn); UnloadFileData(f); } } } li = 0; }
+        else if (li < 255) line[li++] = c;
+    }
+    UnloadFileData(m);
+}
+#endif
+
 int main(int argc, char **argv) {
     const char *adf = "/home/jon/swiv-amiga-re/SWIVFIX.ADF";
+#ifdef __ANDROID__
+    android_bootstrap(); adf = "SWIVFIX.ADF";
+#endif
     const char *shot = NULL; double shot_scroll = 0; int shot_frames = 10; const char *shot_file = NULL; int autofire = 0, test_go = -1, frame_no = 0;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--adf")) adf = argv[++i];
@@ -251,8 +295,12 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--scroll")) shot_scroll = atof(argv[++i]);
     }
     if (swiv_open(&disk, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
+#ifdef __ANDROID__
+    InitWindow(0, 0, "SWIV"); SetExitKey(KEY_NULL);
+#else
     InitWindow(WIN_W, WIN_H, "SWIV native viewer"); SetExitKey(KEY_NULL);
-    { const char *fonts[] = { "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/noto/NotoSans-Regular.ttf", NULL };
+#endif
+    { const char *fonts[] = { "assets/DejaVuSans.ttf", "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/noto/NotoSans-Regular.ttf", NULL };
       if (FileExists("assets/retro_recomp_logo.png")) { rr_logo = LoadTexture("assets/retro_recomp_logo.png"); SetTextureFilter(rr_logo, TEXTURE_FILTER_BILINEAR); }
       for (int i = 0; fonts[i] && !ui_font_ok; i++) if (FileExists(fonts[i])) { ui_font = LoadFontEx(fonts[i], 40, NULL, 0); ui_font_ok = ui_font.texture.id != 0; if (ui_font_ok) SetTextureFilter(ui_font.texture, TEXTURE_FILTER_BILINEAR); } }
     if (!shot) { audio_init(&disk); options_load(); options_apply(); }
@@ -266,6 +314,12 @@ int main(int argc, char **argv) {
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
+        vptr_update(mode != 2 || game_paused);
+        if (vptr_pad >= 0 && IsGamepadButtonPressed(vptr_pad, GAMEPAD_BUTTON_MIDDLE_LEFT)) {   /* Select/Back */
+            if (mode == 2 && game_paused) { mode = 3; game_on = 0; game_paused = 0; fe_game = 0; fe_start_title(); }
+            else if (mode != 2 && mode != 3) mode = 3;
+        }
+        if (mode == 2 && vptr_pad >= 0 && IsGamepadButtonPressed(vptr_pad, GAMEPAD_BUTTON_MIDDLE_RIGHT)) game_paused ^= 1;   /* Start = pause */
         if (++frame_no == test_go && mode == 2) { g.game_over160 = 1; autofire = 0; }
         audio_update(); audio_music_play(&disk, mode == 3 ? fe_music() : mode == 2 ? (opt.ingame_music ? "AMTITUNE.MOD" : fe_music()) : NULL);
         if (mode == 6) {
@@ -632,6 +686,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){540, r1, 90, bh}, "ANIM", sp_anim)) sp_anim ^= 1;
             if (button((Rectangle){640, r1, 70, bh}, sp_zoom == 1 ? "x1" : sp_zoom == 2 ? "x2" : "x4", 0)) sp_zoom = sp_zoom == 4 ? 1 : sp_zoom * 2;
         }
+        if (vptr_on) { DrawCircleV(vptr, 14, (Color){0, 0, 0, 140}); DrawCircleV(vptr, 10, (Color){255, 238, 136, 255}); }
         EndTextureMode();
         DrawTexturePro(canvas_rt.texture, (Rectangle){0, 0, WIN_W, -WIN_H}, (Rectangle){view_ox, view_oy, WIN_W * view_scale, WIN_H * view_scale}, (Vector2){0, 0}, 0, WHITE);
         EndDrawing();
