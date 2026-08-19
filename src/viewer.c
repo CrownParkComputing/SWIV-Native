@@ -1,7 +1,10 @@
 /* swivview -- native SWIV map scroller + sprite browser (raylib, no 68000).
  * All controls are on-screen buttons (mouse or touch; keys are optional extras). */
 #include "swivdata.h"
-#include "game.h"
+#include "engine/engine.h"
+extern void player_start(void); extern void player_vbl(void);
+extern int player_input_dx, player_input_dy, player_input_fire;
+extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +21,7 @@
 
 static SwivDisk disk;
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
-static Game game; static int game_on = 0; static int game_paused = 0;
+static int game_on = 0; static int game_paused = 0; static int eng_level = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 0;
 static Texture2D tex; static Image img;
 static int mode = 0;              /* 0 map, 1 sprites, 2 play */
@@ -41,15 +44,22 @@ static int button(Rectangle r, const char *label, int active) {
 static int held(Rectangle r) { return ui_hit(r) && IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
 
 /* ---- map ---- */
+static int is_air_name(const char *n) {
+    static const char *air[] = { "FODDERA", "BIRD", "VTOL", "BLACKJET", "SKYEYEA", "SKYEYEB", "YELLOW", "TRILO", "XEVIOUS", "BUNNY", "GOOSE",
+        "MAMA", "DADA", "JETS", "SEAPLANE", "BOS", "ORB", "INSECTS", "FROG", "EDGE", "TAP", "TILT", "FLAME", "FISH", "HOMING", "AIRMINE", NULL };
+    for (int i = 0; air[i]; i++) if (!strncasecmp(n, air[i], strlen(air[i]))) return 1;
+    return 0;
+}
 static void load_level(int lv) {
     if (map_lv >= 0) { swiv_map_free(&map); swiv_canvas_free(&canvas); }
     swiv_map_load(&disk, lv, &map);
     swiv_map_render(&disk, &map, &canvas, 0);
     for (int i = 0; i < map.nobjs; i++) {
         const SwivRec *r = &map.objs[i]; int id = r->gfx & 0x1FF;
-        int cls = id < disk.norder ? game_class_of(disk.order[id]) : CLS_SCENERY;
-        int is_air = cls == CLS_AIR;
-        if (cls == CLS_SCENERY || (is_air ? show_air : show_ground)) {
+        const char *nm = id < disk.norder ? disk.order[id] : "_";
+        int scenery = nm[0] == '_';
+        int is_air = !scenery && is_air_name(nm);
+        if (scenery || (is_air ? show_air : show_ground)) {
             canvas.cur_palid = swiv_map_palid_at(&map, r->y);
             swiv_blit_gfx(&disk, &canvas, r->gfx, r->x, map.height + SWIV_MARGIN - r->y);
         }
@@ -152,8 +162,7 @@ int main(int argc, char **argv) {
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
         if (mode == 2) {
-            if (!game_on) { game_init(&game, &disk, map_lv < 0 ? 0 : map_lv); game_on = 1; }
-            /* input: keyboard + touch/mouse (left half = stick, right half = fire) */
+            if (!game_on) { eng_init(&disk, map_lv < 0 ? 0 : map_lv); player_start(); game_on = 1; eng_level = map_lv < 0 ? 0 : map_lv; }
             int dx = 0, dy = 0, fire = 0;
             if (IsKeyDown(KEY_LEFT)) dx = -1; if (IsKeyDown(KEY_RIGHT)) dx = 1;
             if (IsKeyDown(KEY_UP)) dy = -1; if (IsKeyDown(KEY_DOWN)) dy = 1;
@@ -162,7 +171,7 @@ int main(int argc, char **argv) {
             int tc = GetTouchPointCount();
             for (int t = 0; t < (tc ? tc : (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? 1 : 0)); t++) {
                 Vector2 p = tc ? GetTouchPosition(t) : GetMousePosition();
-                if (p.y >= VIEW_H * SCALE) continue;           /* button bar */
+                if (p.y >= VIEW_H * SCALE) continue;
                 if (p.x < WIN_W / 2) {
                     if (!stick_on) { stick0 = p; stick_on = 1; }
                     float ddx = p.x - stick0.x, ddy = p.y - stick0.y;
@@ -170,18 +179,33 @@ int main(int argc, char **argv) {
                 } else fire = 1;
             }
             if (!tc && !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) stick_on = 0;
-            game.input_dx = dx; game.input_dy = dy; game.input_fire = fire;
-            if (!game_paused) game_step(&game);
+            player_input_dx = dx; player_input_dy = dy; player_input_fire = fire;
+            if (!game_paused) { eng_vbl(); player_vbl(); }
+            /* render: terrain window then sprites (descending key) */
             static uint8_t idx[VIEW_W * VIEW_H]; static uint16_t rowpal[VIEW_H][16];
-            game_render(&game, idx, rowpal);
+            static SwivCanvas terrain; static int terrain_lv = -1;
+            if (terrain_lv != eng_level) { if (terrain_lv >= 0) swiv_canvas_free(&terrain); swiv_map_render(&disk, &eng_map, &terrain, 0); terrain_lv = eng_level; }
+            int top_img = eng_map.height + SWIV_MARGIN - (int)(0xE9C0 - g.scroll3542);   /* image row of map y = scroll (screen top) */
+            for (int y = 0; y < VIEW_H; y++) {
+                int sy = top_img + y;
+                if (sy >= 0 && sy < terrain.h) memcpy(idx + y * VIEW_W, terrain.px + (size_t)sy * terrain.w, VIEW_W); else memset(idx + y * VIEW_W, 0, VIEW_W);
+                swiv_map_palette_row(&eng_map, sy, rowpal[y]);
+            }
+            SwivCanvas c = { VIEW_W, VIEW_H, idx, NULL, 0 };
+            /* sort render list descending by key (simple insertion, small n) */
+            static RenderEntry rl[1024 + 30]; int n = 0;
+            for (int i = 0; i < render_count; i++) rl[n++] = render_list[i];
+            for (int i = 0; i < player_bullet_count; i++) rl[n++] = player_bullet_render[i];
+            for (int i = 1; i < n; i++) { RenderEntry e = rl[i]; int j = i - 1; while (j >= 0 && rl[j].key < e.key) { rl[j + 1] = rl[j]; j--; } rl[j + 1] = e; }
+            for (int i = 0; i < n; i++) if (!(rl[i].flags & 0x20) || 1) swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y);
             for (int y = 0; y < VIEW_H; y++) {
                 Color cols[16];
                 for (int i = 0; i < 16; i++) { swiv_rgb12(rowpal[y][i], &cols[i].r, &cols[i].g, &cols[i].b); cols[i].a = 255; }
                 for (int x = 0; x < VIEW_W; x++) buf[y * VIEW_W + x] = cols[idx[y * VIEW_W + x] & 15];
             }
-            snprintf(status, sizeof status, "PLAY level %d %s   score %06d   lives %d   power %d   scroll %.0f/%d%s%s",
-                     game.level + 1, game.map.pam_name, game.pscore, game.plives, game.ppower, game.scroll, game.map.height,
-                     game_paused ? "   PAUSED" : "", game.game_over ? "   GAME OVER" : game.level_done ? "   LEVEL COMPLETE" : "");
+            int nobj = 0; FOR_EACH_OBJ(ob) nobj++;
+            snprintf(status, sizeof status, "PLAY level %d %s   score %06d   objects %d   scroll %04x   tick %d%s",
+                     eng_level + 1, eng_map.pam_name, g.heli.score, nobj, g.scroll3530, g.tick, game_paused ? "   PAUSED" : "");
         } else if (mode == 0) {
             if (!paused) scroll_pos += speed;
             if (scroll_pos < 0) scroll_pos = 0;
@@ -209,14 +233,14 @@ int main(int argc, char **argv) {
         /* left: mode toggle */
         if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
         if (button((Rectangle){8, r2, 100, bh}, "SPRITES", mode == 1)) mode = 1;
-        if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_free(&game); game_on = 0; } mode = 2; }
+        if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_on = 0; } mode = 2; }
         if (mode == 2) {
             for (int k = 0; k < 7; k++) {
                 char l[4]; snprintf(l, 4, "%d", k + 1);
-                if (button((Rectangle){120 + k * 52, r1, 48, bh}, l, game.level == k)) { game_free(&game); map_lv = k; game_init(&game, &disk, k); }
+                if (button((Rectangle){120 + k * 52, r1, 48, bh}, l, eng_level == k)) { map_lv = k; eng_init(&disk, k); player_start(); eng_level = k; }
             }
             if (button((Rectangle){500, r1, 90, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
-            if (button((Rectangle){600, r1, 110, bh}, "RESTART", 0)) { int lv = game.level; game_free(&game); game_init(&game, &disk, lv); }
+            if (button((Rectangle){600, r1, 110, bh}, "RESTART", 0)) { eng_init(&disk, eng_level); player_start(); }
             DrawText("left half: drag to steer   right half: fire   (or arrows + space)", 120, r2 + 12, 16, LIGHTGRAY);
         } else if (mode == 0) {
             for (int k = 0; k < 7; k++) {
