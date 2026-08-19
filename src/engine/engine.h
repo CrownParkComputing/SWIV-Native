@@ -78,7 +78,12 @@ typedef struct {
     /* respawn / bonus-zone globals used by JEEPHELI#23/#31/#43 and MEDTANK dust */
     int g3548, g3550, g3552, g3554, g3556; int zone150, zone152, zone154; int flag3615, flag3616;
     /* player records */
-    struct Player { int alive; int no; int vehicle; int16_t joy; int32_t x, y, z; int score; int fire_cd; int invuln106, flicker108; Obj *obj; const char *name; } heli, jeep;
+    struct Player { int alive; int no; int vehicle; int16_t joy; int32_t x, y, z; int score; int fire_cd; int invuln106, flicker108; Obj *obj; const char *name;
+        /* player.c (LAB_0556/055A manager + LAB_057D input): 98 fire period (VBLs), 100 weapon level (bullets/shot, 6 = 8-way),
+         * 102 power counter (0..19), 104 spread flag (-1 = per-bullet velocities), 68 lives (-4 units, 0 = none left), 110 time alive,
+         * 55 joined, 80 hiscore, 84 next extra life, 66 raw joystick, 90/92/94 double-tap detector */
+        int16_t rate98, level100, power102, spread104, lives68, time110, joined55; int32_t hiscore80, next_life84; int16_t joy66, joy90, joy92, joy94;
+    } heli, jeep;
 } Globals;
 extern Globals g;
 

@@ -50,6 +50,7 @@ static int is_air_name(const char *n) {
     for (int i = 0; air[i]; i++) if (!strncasecmp(n, air[i], strlen(air[i]))) return 1;
     return 0;
 }
+extern int swiv_map_skip_nonscenery_tiles;
 static void load_level(int lv) {
     if (map_lv >= 0) { swiv_map_free(&map); swiv_canvas_free(&canvas); }
     swiv_map_load(&disk, lv, &map);
@@ -184,7 +185,7 @@ int main(int argc, char **argv) {
             /* render: terrain window then sprites (descending key) */
             static uint8_t idx[VIEW_W * VIEW_H]; static uint16_t rowpal[VIEW_H][16];
             static SwivCanvas terrain; static int terrain_lv = -1;
-            if (terrain_lv != eng_level) { if (terrain_lv >= 0) swiv_canvas_free(&terrain); swiv_map_render(&disk, &eng_map, &terrain, 0); terrain_lv = eng_level; }
+            if (terrain_lv != eng_level) { if (terrain_lv >= 0) swiv_canvas_free(&terrain); swiv_map_skip_nonscenery_tiles = 1; swiv_map_render(&disk, &eng_map, &terrain, 0); swiv_map_skip_nonscenery_tiles = 0; terrain_lv = eng_level; }
             int top_img = eng_map.height + SWIV_MARGIN - (int)(0xE9C0 - g.scroll3542);   /* image row of map y = scroll (screen top) */
             for (int y = 0; y < VIEW_H; y++) {
                 int sy = top_img + y;

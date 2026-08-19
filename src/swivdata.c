@@ -240,6 +240,7 @@ static int cmp_draw(const void *a, const void *b) {
     return s->seq - r->seq;                 /* descending seq within layer */
 }
 
+int swiv_map_skip_nonscenery_tiles = 0;   /* play mode: the game draws tiles only from scenery sets (underscore names) */
 int swiv_map_render(SwivDisk *d, const SwivMap *m, SwivCanvas *c, int with_objects) {
     int H = m->height + 2 * SWIV_MARGIN;
     swiv_canvas_init(c, SWIV_FIELD_W, H, 10);   /* background = colour 10 */
@@ -247,6 +248,7 @@ int swiv_map_render(SwivDisk *d, const SwivMap *m, SwivCanvas *c, int with_objec
     memcpy(order, m->tiles, sizeof(SwivRec) * m->ntiles);
     qsort(order, m->ntiles, sizeof(SwivRec), cmp_draw);
     for (int i = 0; i < m->ntiles; i++) {
+        if (swiv_map_skip_nonscenery_tiles) { int id = order[i].gfx & 0x1ff; if (id < d->norder && d->order[id][0] != '_') continue; }
         c->cur_palid = swiv_map_palid_at(m, order[i].y);
         swiv_blit_gfx(d, c, order[i].gfx, order[i].x, m->height + SWIV_MARGIN - order[i].y);
     }
