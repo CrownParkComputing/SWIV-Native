@@ -9,8 +9,8 @@ build/dumpmap: tools/dumpmap.c src/swivdata.c src/swivdata.h
 
 ENGINE = src/engine/engine.c src/engine/effects.c src/engine/coro.c src/engine/tables.c src/engine/player.c src/behaviours/table.c $(wildcard src/behaviours/bh_*.c)
 
-build/swivview: src/viewer.c src/audio.c src/swivdata.c src/swivdata.h $(ENGINE) src/engine/engine.h
-	mkdir -p build && $(CC) $(CFLAGS) -o $@ src/viewer.c src/audio.c src/swivdata.c $(ENGINE) $(RAYLIB)
+build/swivview: src/viewer.c src/audio.c src/sfx_bank.c src/swivdata.c src/swivdata.h $(ENGINE) src/engine/engine.h
+	mkdir -p build && $(CC) $(CFLAGS) -o $@ src/viewer.c src/audio.c src/sfx_bank.c src/swivdata.c $(ENGINE) $(RAYLIB)
 
 build/simrun: tools/simrun.c src/swivdata.c $(ENGINE) src/engine/engine.h
 	mkdir -p build && $(CC) $(CFLAGS) -DSWIV_NO_AUDIO -o $@ tools/simrun.c src/swivdata.c $(ENGINE) -lm
