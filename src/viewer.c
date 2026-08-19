@@ -110,9 +110,9 @@ static void decode_cover(void) {
 /* ---- extras: Hall of Light media (extras/hol) ---- */
 #include <dirent.h>
 typedef struct { const char *title; const char *dir; const char *ext; } ExtraCat;
-static const ExtraCat EXTRA_CATS[] = { {"Screenshots", "extras/hol/screen", ".png"}, {"Box", "extras/hol/box", ".jpg"}, {"Disks", "extras/hol/disk", ".jpg"},
-    {"Scans & adverts", "extras/hol/misc", ".jpg"}, {"Manual", "extras/hol/manual_pages", ".png"}, {"Map", "extras/hol/map", ".png"}, {"Cheats", NULL, NULL} };
-#define N_EXTRA_CATS 7
+static const ExtraCat EXTRA_CATS[] = { {"Screenshots", "extras/hol/screen", ".png"}, {"Box", "extras/hol/box", ".png"}, {"Disks", "extras/hol/disk", ".png"},
+    {"Scans & adverts", "extras/hol/misc", ".png"}, {"Map", "extras/hol/map", ".png"}, {"Cheats", NULL, NULL} };
+#define N_EXTRA_CATS 6
 static char extra_files[256][160]; static int extra_n, extra_cat = 0, extra_idx = 0; static Texture2D extra_tex; static int extra_loaded_idx = -1, extra_loaded_cat = -1;
 static char cheats_text[4096];
 static int cmpstr(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
@@ -335,7 +335,7 @@ int main(int argc, char **argv) {
                 if (extra_n == 0) ui_text("(nothing downloaded here)", 24, top + 20, 24, LIGHTGRAY);
                 else {
                     float sc = (float)(WIN_W - 32) / extra_tex.width; if (extra_tex.height * sc > avail_h - 70) sc = (float)(avail_h - 70) / extra_tex.height;
-                    if (extra_cat == 5) { /* tall map: scroll vertically */ sc = (float)(WIN_W - 32) / extra_tex.width; if (sc > 3) sc = 3; extra_scroll -= GetMouseWheelMove() * 200; float maxs = extra_tex.height * sc - (avail_h - 70); if (maxs < 0) maxs = 0; if (extra_scroll < 0) extra_scroll = 0; if (extra_scroll > maxs) extra_scroll = maxs;
+                    if (extra_cat == 4) { /* tall map: scroll vertically */ sc = (float)(WIN_W - 32) / extra_tex.width; if (sc > 3) sc = 3; extra_scroll -= GetMouseWheelMove() * 200; float maxs = extra_tex.height * sc - (avail_h - 70); if (maxs < 0) maxs = 0; if (extra_scroll < 0) extra_scroll = 0; if (extra_scroll > maxs) extra_scroll = maxs;
                         BeginScissorMode(0, top, WIN_W, avail_h - 70); DrawTextureEx(extra_tex, (Vector2){(WIN_W - extra_tex.width * sc) / 2, top - extra_scroll}, 0, sc, WHITE); EndScissorMode(); }
                     else DrawTextureEx(extra_tex, (Vector2){(WIN_W - extra_tex.width * sc) / 2, top}, 0, sc, WHITE);
                     char l[64]; snprintf(l, sizeof l, "%d / %d", extra_idx + 1, extra_n);
