@@ -39,8 +39,9 @@ void audio_init(SwivDisk *d) {
     snd[SFX_PICKUP] = synth(160, 700, 1400, 0, 2);
     ready = 1;
     /* title music: AMTITUNE.MOD via raylib's module player, if the build supports .mod */
-    i = swiv_find(d, "AMTITUNE.MOD");
-    if (i >= 0 && (p = swiv_load(d, i, &n))) { music = LoadMusicStreamFromMemory(".mod", p, n); have_music = music.frameCount > 0; }
+    /* MOD playback disabled by default: raylib's jar_mod hung on AMTITUNE.MOD (set SWIV_MUSIC=1 to try) */
+    if (getenv("SWIV_MUSIC")) { i = swiv_find(d, "AMTITUNE.MOD");
+        if (i >= 0 && (p = swiv_load(d, i, &n))) { music = LoadMusicStreamFromMemory(".mod", p, n); have_music = music.frameCount > 0; } }
 }
 void audio_update(void) { if (have_music) UpdateMusicStream(music); }
 void audio_music(int on) { if (!have_music) return; if (on) { if (!IsMusicStreamPlaying(music)) PlayMusicStream(music); } else StopMusicStream(music); }
