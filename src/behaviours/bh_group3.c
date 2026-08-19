@@ -417,7 +417,7 @@ static void plat_common(Obj *o) {                   /* LAB_072D @ $2160dc */
         if (wait_vbls(o, 100)) return;
         Obj *c = spawn_attached(plat_vehicle);
         if (c) c->w[0] = (int16_t)((c->w[0] & 0xff) | (PLAT_SIDE(o) << 8));
-        sfx(SFX_PICKUP, XW(o));                     /* LAB_03F3 */
+        sfx(SFX_TOKEN, XW(o));                     /* LAB_03F3 */
         int d = PLAT_SIDE(o) ? 1 : -1;
         for (o->w[1] = 0x12; ; ) {                  /* LAB_0730: slide out */
             if (step(o)) return;

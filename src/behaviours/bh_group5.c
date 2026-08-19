@@ -35,7 +35,7 @@ static void fx_splash(Obj *o) {
 
 /* LAB_07C8 @ $2175ea: boss hit handler -- on death both live players get the score, smart bomb if last boss */
 static void boss_hit(Obj *o) {
-    if (--o->hp > 0) { sfx(SFX_HIT, XI(o)); o->flags367 |= F_HIT_FLASH; return; }   /* LAB_03D6 + LAB_0727 */
+    if (--o->hp > 0) { sfx(SFX_BOSS_HIT, XI(o)); o->flags367 |= F_HIT_FLASH; return; }   /* LAB_03D6 + LAB_0727 */
     if (g.heli.alive) g.heli.score += o->score;
     if (g.jeep.alive) g.jeep.score += o->score;
     if (g.boss140 <= 1) smart_bomb(o);
@@ -348,7 +348,7 @@ static void inst1_death(Obj *o) {
 /* LAB_07C7: fire animation + shell, then 40 ticks */
 static int inst1_fire(Obj *o) {
     anim_start(o, INST1_FIRE_ANIM);
-    sfx(SFX_SHOT, XI(o));                               /* LAB_040F */
+    sfx(SFX_TURRET_SHOT, XI(o));                               /* LAB_040F */
     spawn_prio(inst1_shell, 100);                       /* LAB_04D2 prio 100 */
     return wait_vbls(o, 40);
 }
@@ -451,7 +451,7 @@ void bh_inst2_2(Obj *o) {
         on_event(o, EV_BULLET, boss_hit);
         if (wait_vbls(o, 50)) break;
         for (;;) {                                      /* LAB_07D3 */
-            sfx(SFX_SHOT, XI(o));                       /* LAB_040F */
+            sfx(SFX_TURRET_SHOT, XI(o));                       /* LAB_040F */
             spawn_prio(inst2_shell, 100);
             if (wait_vbls(o, 20)) goto out;
             if ((int16_t)rng() < 0) break;

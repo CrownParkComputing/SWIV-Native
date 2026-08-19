@@ -22,7 +22,7 @@ static int16_t g138_roto_toggle;    /* 138(A6): ROTOBASE spin-direction toggle (
  * ========================================================================================= */
 static const int16_t ANIM_BOMB[] = { A_RATE(4), 0x0601, 0x0801, A_LOOP, A_END };
 void bh_xevious_bomb_05e9(Obj *o) {
-    sfx(SFX_MISSILE, o->x >> 16);                       /* LAB_03CC: bomb whistle (closest SFX) */
+    sfx(SFX_FIREBALL, o->x >> 16);                       /* LAB_03CC: bomb whistle (closest SFX) */
     enemy_init(o, 0x0601, 6, -16, 0, 0, 3);
     stop(o);
     o->flags367 |= F_NO_SHADOW | F_SCREEN_LOCKED;       /* ORI.B #$11,367 */
@@ -172,7 +172,7 @@ void bh__corn_7(Obj *o) {
     if (wait_onscreen(o, 80)) return;
     o->box.mask = 0x22;
     o->vz = 0x4000;
-    sfx(SFX_MISSILE, o->x >> 16);                       /* LAB_0416: take-off drone (closest SFX) */
+    sfx(SFX_TAKEOFF, o->x >> 16);                       /* LAB_0416: take-off drone (closest SFX) */
     do { if (step(o)) return; } while (UWORD(o->z) < 0x20);   /* LAB_0600 */
     o->vz = 0;
     o->ay = 0x800;

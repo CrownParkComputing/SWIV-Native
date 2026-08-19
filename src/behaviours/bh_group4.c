@@ -27,7 +27,7 @@ static void flash_0619(Obj *o) {
  * speed $200; aim at alternate player (snap) + random (rng&31)-16; fly, z = y/2 (draw-order trick) until signalled. */
 static const int16_t FIREBALL_ANIM[] = { A_RATE(4), 0x0601, 0x0801, A_LOOP, A_END };
 static void fireball_05e9(Obj *o) {
-    sfx(SFX_SHOT, o->x >> 16);                       /* LAB_03CC: unknown sound, closest guess */
+    sfx(SFX_FIREBALL, o->x >> 16);                       /* LAB_03CC: unknown sound, closest guess */
     enemy_init(o, 0x0601, 6, -16, 0, 0, 3);
     stop(o); o->flags367 |= F_SCREEN_LOCKED | F_NO_SHADOW; o->margin = 0;
     anim_start(o, FIREBALL_ANIM); set_frame(o, 0x0601);
@@ -89,7 +89,7 @@ void bh_popup_0(Obj *o) {
     enemy_init(o, 0x000e, 36, margin, 3, 70, 14);
     if (g.difficulty182 == 0) return;                /* TST.W 182(A6); BEQ LAB_0747 (die) */
     o->animA.flags |= 1; o->popup374 = 5;
-    sfx(SFX_PICKUP, o->x >> 16);                     /* LAB_03F3 */
+    sfx(SFX_TOKEN, o->x >> 16);                     /* LAB_03F3 */
     anim_start(o, POPUP_UP);
     o->box.mask = 0x20;
     wait_vbls(o, 50);                               /* result not checked */
@@ -171,7 +171,7 @@ void bh_pyramid_1(Obj *o) {
 /* LAB_0759 @ $2166C0: falling egg-bomb (hazard, both players), with a muzzle flash */
 static void egg_bomb_0759(Obj *o) {
     o->y += 0x10 << 16;
-    sfx(SFX_SHOT, o->x >> 16);                       /* LAB_0411: unknown sound (closest guess) */
+    sfx(SFX_BOMB_WHISTLE, o->x >> 16);                       /* LAB_0411: unknown sound (closest guess) */
     enemy_init(o, 0x7001, 6, 0, 0, 0, 5);
     o->flags367 |= F_NO_SHADOW;
     o->z += 1 << 16;                                 /* ADDQ.W #1,328(A5) */
@@ -229,7 +229,7 @@ void bh_proxmine_0(Obj *o) {
     enemy_init(o, 0x000f, 36, margin, 4, 30, 10);
     if (g.difficulty182 == 0) return;                /* BEQ LAB_075E (die) */
     o->animA.flags |= 1; o->popup374 = 5;
-    sfx(SFX_PICKUP, o->x >> 16);                     /* LAB_03F3 */
+    sfx(SFX_TOKEN, o->x >> 16);                     /* LAB_03F3 */
     anim_start(o, PROXMINE_ARM);
     o->box.mask = 0x20;
     wait_vbls(o, 100);                              /* result not checked */
@@ -262,7 +262,7 @@ static const int16_t FLAME_FLICKER[] = { A_RATE(2), 0x1813, 0x1a13, 0x1813, 0x1c
 static const int16_t FLAME_PUFF[]  = { A_RATE(5), 0x0a13, 0x0c13, 0x0e13, 0x1013, 0x1213, 0x1413, 0x1613, A_END };
 /* LAB_0765 @ $2168F2: drifting flame puff (heli-only hazard, mask 4), 35 ticks */
 static void flame_puff_0765(Obj *o) {
-    sfx(SFX_SHOT, 0);                                /* LAB_03EE(D0=0): flame hiss (closest guess) */
+    sfx(SFX_FLAME, 0);                                /* LAB_03EE(D0=0): flame hiss (closest guess) */
     enemy_init(o, 0x0013, 4, 0, 0, 0, 10);
     o->vx = 0x28000;
     anim_start(o, FLAME_PUFF);
@@ -283,7 +283,7 @@ void bh_flame_0(Obj *o) {
     enemy_init(o, 0x0013, 36, 0x80, 3, 40, 10);
     o->margin = -8;
     o->animA.flags |= 1; o->popup374 = 5;
-    sfx(SFX_PICKUP, o->x >> 16);                     /* LAB_03F3 */
+    sfx(SFX_TOKEN, o->x >> 16);                     /* LAB_03F3 */
     anim_start(o, FLAME_RISE);
     o->box.mask = 0x20;
     wait_vbls(o, 24);                               /* result not checked */

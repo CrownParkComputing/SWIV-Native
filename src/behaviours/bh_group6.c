@@ -145,7 +145,7 @@ void bh_inst3_3(Obj *o) {
         inst3_sweep(o);
         inst3_track(o);
         if (inst3_wait(o, 4)) break;
-        sfx(SFX_SHOT, XI(o));                           /* LAB_0411 */
+        sfx(SFX_BOMB_WHISTLE, XI(o));                           /* LAB_0411 */
         inst3_fire(o, 19, 20); inst3_fire(o, -19, 20);
         o->y -= PX(16); o->w[2] = 16;
         do { o->y += PX(1); inst3_wait(o, 1); } while (--o->w[2]);   /* LAB_07DB recoil */
@@ -502,7 +502,7 @@ static void inst5_sparks(Obj *o) {
 }
 /* LAB_0811: final boss hit handler (runs inline in step; may yield) */
 static void inst5_hit(Obj *o) {
-    sfx(SFX_HIT, XI(o));                                /* LAB_07B3 -> LAB_03D6 */
+    sfx(SFX_BOSS_HIT, XI(o));                                /* LAB_07B3 -> LAB_03D6 */
     if (--o->hp > 0) { flash11166 = 0x40; yield_vbls(o, 1); flash11166 = 0; return; }
     boss_clock12534++;                                  /* kill the boss group */
     smart_bomb(o);
@@ -640,11 +640,11 @@ static void goose_bombs(Obj *o, int n) {
 }
 /* LAB_0860: goose hit handler */
 static void goose_hit(Obj *o) {
-    if (--o->hp > 0) { o->vx = -o->vx; sfx(SFX_HIT, XI(o)); o->flags367 |= F_HIT_FLASH; return; }   /* LAB_0627 */
+    if (--o->hp > 0) { o->vx = -o->vx; sfx(SFX_BOSS_HIT, XI(o)); o->flags367 |= F_HIT_FLASH; return; }   /* LAB_0627 */
     for (Obj *c = o->child; c; ) { Obj *n = c->sib; c->parent = NULL; c->sib = NULL; c = n; } o->child = NULL;   /* LAB_04C3 */
     int d = 2; if (!((uint16_t)o->w[2] > 0x1f4)) d++;   /* BHI skips the ADDQ */
     goose_bombs(o, d);
-    sfx(SFX_BIGEXPL, XI(o));                            /* LAB_0628 */
+    sfx(SFX_ENEMY_DESTROYED, XI(o));                            /* LAB_0628 */
     kill(o);
 }
 void bh_goose_0(Obj *o) {

@@ -195,7 +195,7 @@ void bh_bunny_2(Obj *o) {
  * XEVIOUS.LIN#5  @ $21363A  -- indestructible drifting thing; pings when shot
  * ------------------------------------------------------------------------------------------ */
 static const int16_t XEVIOUS5_ANIM[] = { A_RATE(7), A_SETLOOP(0), 0x062E, 0x082E, 0x0A2E, 0x0C2E, 0x0E2E, 0x102E, 0x0E2E, A_LOOP, A_END };
-static void xevious5_shot(Obj *o) { sfx(SFX_HIT, o->x >> 16); }   /* LAB_05BD -> LAB_041F (ricochet sound) */
+static void xevious5_shot(Obj *o) { sfx(SFX_RICOCHET, o->x >> 16); }   /* LAB_05BD -> LAB_041F (ricochet sound) */
 void bh_xevious_5(Obj *o) {
     enemy_init(o, 0x062e, 34, -16, 0, 0, 13);
     o->flags367 |= F_NO_SHADOW;
@@ -279,7 +279,7 @@ static void cont_blackjet(Obj *o) {
     if (!threat_ok()) return;
     o->z = PX(0x20);
     o->x = PX((rng() & 0xff) + 0x20);
-    sfx(SFX_MISSILE, o->x >> 16);                  /* LAB_0401: jet whoosh -- closest SFX_ */
+    sfx(SFX_JET, o->x >> 16);                  /* LAB_0401: jet whoosh -- closest SFX_ */
     o->ay = (o->ay & (int32_t)0xffff0000) | 0x1800;   /* MOVE.W #$1800,350(A5): low word of ay */
     wait_signal(o);
 }
@@ -293,7 +293,7 @@ void bh_blackjet_0(Obj *o) {
  * ------------------------------------------------------------------------------------------ */
 static void bos_bomb(Obj *o) {                   /* LAB_0759 @ $2166C0 */
     o->y += PX(0x10);
-    sfx(SFX_MISSILE, o->x >> 16);                  /* LAB_0411: bomb whistle -- closest SFX_ */
+    sfx(SFX_BOMB_WHISTLE, o->x >> 16);                  /* LAB_0411: bomb whistle -- closest SFX_ */
     enemy_init(o, 0x7001, 6, 0, 0, 0, 5);
     o->flags367 |= F_NO_SHADOW;
     o->z += PX(1);
