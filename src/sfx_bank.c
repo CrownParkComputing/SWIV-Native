@@ -32,8 +32,10 @@
 #include <string.h>
 
 #define OUT_RATE      22050
-#define TICK_HZ       200.0          /* CIA-B TA one-shot 3464 E-clocks + the handler's re-arm latency */
-#define FRAME_SAMPLES 110            /* 22050 / TICK_HZ, one driver tick */
+/* Driver tick: CIA-B TA one-shot 3464 E-clocks + re-arm latency = ~200 Hz (measured on the host).  A 50 Hz
+ * variant (the earlier assumption: one tick per VBL) is kept selectable per entry for A/B listening. */
+static double TICK_HZ = 200.0;
+static int FRAME_SAMPLES = 110;            /* 22050 / TICK_HZ, one driver tick */
 #define PAULA_CLK     3546895.0
 #define MIN_PERIOD    113.75         /* one data word (2 samples) per 227.5-clock scanline: below this
                                         the word is replayed, so the audible rate pins here (LAB_041D hits 72) */
@@ -376,8 +378,17 @@ static const Entry entries[] = {
 };
 #define NENTRIES ((int)(sizeof entries / sizeof entries[0]))
 
-int sfx_bank_count(void) { return NENTRIES; }
-const SfxDesc *sfx_bank_desc(int i) { return (i >= 0 && i < NENTRIES) ? &entries[i].d : NULL; }
+int sfx_bank_count(void) { return NENTRIES * 2; }   /* [0,N) = 200 Hz driver tick, [N,2N) = 50 Hz variant */
+static SfxDesc slow_desc[64]; static char slow_label[64][200]; static char slow_name[64][32];
+const SfxDesc *sfx_bank_desc(int i) {
+    if (i >= 0 && i < NENTRIES) return &entries[i].d;
+    if (i >= NENTRIES && i < 2 * NENTRIES) {
+        int k = i - NENTRIES;
+        if (!slow_desc[k].name) { snprintf(slow_name[k], 32, "%s~50", entries[k].d.name); snprintf(slow_label[k], 200, "%s  [50 Hz timing variant]", entries[k].d.label); slow_desc[k] = (SfxDesc){ slow_name[k], slow_label[k], entries[k].d.channel_hint }; }
+        return &slow_desc[k];
+    }
+    return NULL;
+}
 
 /* ------------------------------------------------------------------ renderer */
 typedef struct { int voice, start, end; int16_t *pcm; } Clip;     /* end = exclusive frame */
@@ -411,7 +422,8 @@ static int alloc_voice(Clip *cur[4], const int prio4_of[4], int prio4, int side,
 
 int16_t *sfx_bank_render(int i, SwivDisk *d, int *frames_out) {
     if (frames_out) *frames_out = 0;
-    if (i < 0 || i >= NENTRIES) return NULL;
+    if (i < 0 || i >= 2 * NENTRIES) return NULL;
+    if (i >= NENTRIES) { i -= NENTRIES; TICK_HZ = 50.0; FRAME_SAMPLES = 441; } else { TICK_HZ = 200.0; FRAME_SAMPLES = 110; }
     Bank b; memset(&b, 0, sizeof b);
     if (d) {
         uint32_t n; int k; const uint8_t *p;
