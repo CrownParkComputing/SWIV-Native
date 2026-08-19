@@ -394,14 +394,6 @@ int main(int argc, char **argv) {
             if (button((Rectangle){426, r1, 90, bh}, "FRAME >", 0) && L->nframes) sp_frame = (sp_frame + 1) % L->nframes;
             if (button((Rectangle){540, r1, 90, bh}, "ANIM", sp_anim)) sp_anim ^= 1;
             if (button((Rectangle){640, r1, 70, bh}, sp_zoom == 1 ? "x1" : sp_zoom == 2 ? "x2" : "x4", 0)) sp_zoom = sp_zoom == 4 ? 1 : sp_zoom * 2;
-            ui_text("PALETTE", 120, r2 + 12, 16, LIGHTGRAY);
-            if (button((Rectangle){216, r2, 60, bh}, "<", 0)) sp_pal = (sp_pal + N_PAL_SRC - 1) % N_PAL_SRC;
-            if (button((Rectangle){282, r2, 60, bh}, ">", 0)) sp_pal = (sp_pal + 1) % N_PAL_SRC;
-            for (int k = 0; k < 7; k++) {
-                char l[4]; snprintf(l, 4, "L%d", k + 1);
-                if (button((Rectangle){360 + k * 52, r2, 48, bh}, l, sp_pal == N_AMPROG_PAL + k)) sp_pal = N_AMPROG_PAL + k;
-            }
-            if (button((Rectangle){740, r2, 100, bh}, "GAME PAL", sp_pal == 2)) sp_pal = 2;
         }
         EndDrawing();
         if (shot && --shot_frames == 0) { TakeScreenshot(shot); break; }
