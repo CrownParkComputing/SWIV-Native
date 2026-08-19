@@ -12,10 +12,10 @@ Formats are a C port of the measured documentation in
     ./build/swivview          # raylib viewer (TAB = map / sprites)
     ./build/dumpmap 0 town.ppm [--objects] [--bake]
 
-Viewer keys — Map: `1-7` level, `SPACE` pause, `UP/DOWN` scrub, `+/-` speed,
-`O` objects, `HOME` restart.  Sprites: `LEFT/RIGHT` file, `UP/DOWN` frame,
-`PGUP/PGDN` palette level, `A` animate.  `F2` screenshot, `ESC` quit.
-Headless: `--shot out.png [--scroll N] [--sprites]`.
+Viewer: all controls are on-screen buttons (mouse or touch) — level 1-7, pause,
+objects, restart, speed presets, scrub + progress bar; sprites: file/frame, animate, zoom,
+palette source (7 level palettes, fully faded-in, or the 11 AMPROG screen palettes).
+Headless: `--shot out.png [--scroll N] [--sprites --file X.LIN --pal N]`.
 
 The map scrolls at the game's ¼ px/frame with one palette per frame taken
 from the map's colour commands (the sunset etc. is data in the map).
