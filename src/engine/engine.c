@@ -458,10 +458,17 @@ int eng_is_air_gfx(uint16_t gfx) {
     for (int i = 0; air[i]; i++) if (!strncasecmp(n, air[i], strlen(air[i]))) return 1;
     return 0;
 }
+static int eng_is_mover_gfx(uint16_t gfx) {   /* moving ground enemies only: fixed turrets/installations/mines/pickups keep their map count */
+    static const char *mv[] = { "MEDTANK", "TRUCK", "TINYTRUK", "FLATTANK", "JUNTANK", "HOVER", "LAKESUB", "SKI", "TRAIN", "DESTRAIN", NULL };
+    int id = gfx & 0x1ff; if (id >= g.disk->norder) return 0; const char *n = g.disk->order[id];
+    for (int i = 0; mv[i]; i++) if (!strncasecmp(n, mv[i], strlen(mv[i]))) return 1;
+    return 0;
+}
 static int spawn_counter_air, spawn_counter_ground;
 void eng_spawn_map_object(int x, int mapy, uint16_t gfx, int type) {
     /* native difficulty: decide how many copies of this record to spawn */
     int air = eng_is_air_gfx(gfx); int copies = 1;
+    if (!air && !eng_is_mover_gfx(gfx)) { eng_spawn_map_object_one(x, mapy, gfx, type); return; }   /* fixed objects: unchanged by difficulty */
     if (eng_difficulty_mode == 0) { int *c = air ? &spawn_counter_air : &spawn_counter_ground; if (((*c)++ & 1)) return; }
     else if (eng_difficulty_mode == 2) { if (air) { copies = 1 + ((spawn_counter_air++ & 1) == 0); } else copies = 2; }
     for (int k = 1; k < copies; k++) {
