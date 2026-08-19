@@ -39,7 +39,7 @@ static void boss_hit(Obj *o) {
     if (g.heli.alive) g.heli.score += o->score;
     if (g.jeep.alive) g.jeep.score += o->score;
     if (g.boss140 <= 1) smart_bomb(o);
-    kill(o);
+    eng_kill(o);
 }
 
 /* ================================================================== _LAVA.LIN#20 @ $216cbc */
@@ -54,7 +54,7 @@ static void lava_rock(Obj *o) {
     o->vz = (int32_t)(rng() & 0x1ffff) + PX(2);      /* ADDQ.W #2 hits the high word */
     o->az = -0x1800;
     for (;;) { if (step(o)) return; if (ZI(o) == 0) break; }
-    kill(o);
+    eng_kill(o);
 }
 void bh__lava_20(Obj *o) {
     g.render_gate155 = 0;                              /* SF 155(A6) */

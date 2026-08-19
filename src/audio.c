@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 static Sound snd[SFX_COUNT]; static int ready;
 /* optional synthesised bank (src/sfx_bank.c) */
@@ -26,6 +27,18 @@ static void bank_rebuild(int i) {
 float audio_tune_get(int i, int what) { return what == 0 ? tune[i].pitch : what == 1 ? tune[i].vol : tune[i].maxsec; }
 void audio_tune_set(int i, int what, float v) { if (what == 0) tune[i].pitch = v; else if (what == 1) tune[i].vol = v; else tune[i].maxsec = v; bank_rebuild(i); }
 void audio_tune_save(void) { FILE *f = fopen("sfxtune.txt", "w"); if (!f) return; for (int i = 0; i < bank_n; i++) fprintf(f, "%s %.3f %.3f %.2f\n", audio_bank_name(i), tune[i].pitch, tune[i].vol, tune[i].maxsec); fclose(f); }
+static volatile int bank_done[64]; static int bank_loaded[64];
+static void bank_postprocess(int i) {
+    int16_t *pcm = bank_pcm[i]; int fr = bank_frames[i]; if (!pcm || fr <= 0) return;
+    double a = 1.0 - exp(-2.0 * 3.14159265 * 4000.0 / 22050.0), y1 = 0, y2 = 0;   /* Amiga output filter ~4 kHz */
+    for (int k = 0; k < fr; k++) { y1 += a * (pcm[k] - y1); y2 += a * (y1 - y2); pcm[k] = (int16_t)y2; }
+}
+static void *bank_worker(void *arg) {
+    SwivDisk *d = arg;
+    for (int i = 0; i < bank_n; i++) { int fr = 0; int16_t *pcm = sfx_bank_render(i, d, &fr); bank_pcm[i] = pcm; bank_frames[i] = fr; bank_postprocess(i); bank_done[i] = 1; }
+    return NULL;
+}
+static void bank_pickup(void) { for (int i = 0; i < bank_n; i++) if (bank_done[i] && !bank_loaded[i]) { bank_loaded[i] = 1; bank_rebuild(i); } }
 static void audio_tune_load(void) { FILE *f = fopen("sfxtune.txt", "r"); char nm[64]; float p, v, m; if (!f) return; while (fscanf(f, "%63s %f %f %f", nm, &p, &v, &m) == 4) for (int i = 0; i < bank_n; i++) if (!strcmp(nm, audio_bank_name(i))) { tune[i] = (Tune){ p, v, m }; bank_rebuild(i); } fclose(f); }
 int audio_bank_frames(int i) { return bank_frames[i]; } static int event_bank[SFX_COUNT]; static SwivDisk *adisk;
 int audio_bank_count(void) { return bank_n; }
@@ -92,21 +105,9 @@ void audio_init(SwivDisk *d) {
     for (int e = 0; e < SFX_COUNT; e++) event_bank[e] = -1;
     if (sfx_bank_count) {
         bank_n = sfx_bank_count(); if (bank_n > 64) bank_n = 64;
-        for (int i = 0; i < bank_n; i++) {
-            int fr = 0; int16_t *pcm = sfx_bank_render(i, d, &fr);
-            bank_pcm[i] = pcm; bank_frames[i] = fr; tune[i] = (Tune){ 1.0f, 1.0f, 4.0f };   /* default cap 4 s: the driver steals/ends endless voices in play */
-            if (pcm && fr > 0) {   /* Amiga output filter: 2-pole low-pass ~4 kHz (A500 RC + LED filter); raw Paula aliases badly at 22 kHz */
-                double a = 1.0 - exp(-2.0 * 3.14159265 * 4000.0 / 22050.0), y1 = 0, y2 = 0;
-                for (int k = 0; k < fr; k++) { y1 += a * (pcm[k] - y1); y2 += a * (y1 - y2); pcm[k] = (int16_t)y2; }
-            }
-            if (pcm && fr > 0) {   /* the bank is at real relative levels (one voice 6144, 4-voice chord 16384, see sfx_bank.h); the
-                                      A500 mixer's 1.8 output gain puts a chord at 90% full scale and a single voice at 34%.
-                                      Do NOT normalise per entry: that made shots as loud as explosions (0.6 : 1 instead of 0.375 : 1) */
-                for (int k = 0; k < fr; k++) { int v = (int)(pcm[k] * 1.8f); pcm[k] = (int16_t)(v > 32767 ? 32767 : v < -32768 ? -32768 : v); }
-            }
-            if (pcm && fr > 0) bank_rebuild(i);
-        }
+        for (int i = 0; i < bank_n; i++) tune[i] = (Tune){ 1.0f, 1.0f, 4.0f };
         audio_map_load(); audio_tune_load();
+        pthread_t th; pthread_create(&th, NULL, bank_worker, d); pthread_detach(th);   /* renders in the background; audio_update() picks up finished entries */
     }
     xc = xmp_create_context();
     SetAudioStreamBufferSizeDefault(1024); mstream = LoadAudioStream(44100, 16, 2);
@@ -126,6 +127,7 @@ void audio_music_play(SwivDisk *d, const char *name) {
 }
 void audio_set_volumes(float sfxv, float musicv) { sfx_gain = sfxv; music_gain = musicv; if (mstream.buffer) SetAudioStreamVolume(mstream, music_gain); }
 void audio_update(void) {
+    bank_pickup();
     if (!music_on) return;
     while (IsAudioStreamProcessed(mstream)) { xmp_play_buffer(xc, mbuf, sizeof mbuf, 0); UpdateAudioStream(mstream, mbuf, 1024); }
 }

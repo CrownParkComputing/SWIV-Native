@@ -1,0 +1,12 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/cmake_install.cmake",
+		"/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/raylib/cmake_install.cmake",
+		"/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/raylib/raylib/cmake_install.cmake",
+		"/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/libxmp/cmake_install.cmake",
+		"/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/libxmp/examples/cmake_install.cmake",
+		"/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/libxmp/docs/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

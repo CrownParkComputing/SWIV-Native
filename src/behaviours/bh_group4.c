@@ -183,7 +183,7 @@ static void egg_bomb_0759(Obj *o) {
 static void egg_body_0756(Obj *o, uint16_t gfx) {
     enemy_init(o, gfx, 36, -20, 8, 75, 10);
     o->flags367 |= F_FLASH_WITH_PARENT;
-    o->cb542 = kill;                                 /* orphaned (nest destroyed) -> explode */
+    o->cb542 = eng_kill;                                 /* orphaned (nest destroyed) -> explode */
     if (wait_onscreen(o, 8)) return;
     o->w[0] = 16;
     for (;;) {                                       /* LAB_0757 */
@@ -249,7 +249,7 @@ void bh_proxmine_0(Obj *o) {
             spawn(proxmine_frag_075f);
             o->angle += 0x2a;
         } while (--o->w[0]);
-        return;                                      /* LAB_075E: die without kill() (no score) */
+        return;                                      /* LAB_075E: die without eng_kill() (no score) */
     }
 }
 

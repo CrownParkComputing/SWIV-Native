@@ -26,7 +26,7 @@
 static const int16_t BOMB_PICKUP_ANIM[] = { A_RATE(1), 0x1211, 0x1411, A_LOOP, A_END };
 static void bomb_pickup_shot(Obj *o) {            /* LAB_06BC: hp--; at 0 -> smart bomb + kill */
     if (--o->hp != 0) return;
-    smart_bomb(o); kill(o);
+    smart_bomb(o); eng_kill(o);
 }
 static void bomb_pickup_touched(Obj *o) {         /* LAB_06BE: give the toucher a shield, or bomb if it has one */
     struct Player *p = (o->box.hits & 0x40) ? &g.heli : &g.jeep;
@@ -54,7 +54,7 @@ static void bomb_pickup(Obj *o) {                 /* LAB_06BB */
 static const int16_t MINE_ANIM[] = { A_RATE(2), 0x0011, 0x0211, 0x0411, 0x0611, 0x0811, 0x0A11, 0x0C11, 0x0E11, A_LOOP, A_END };
 static void mine_hit(Obj *o) {                    /* LAB_06D9 @ $215882: drop a bomb pickup (prio 101) then die */
     spawn_prio(bomb_pickup, 101);
-    kill(o);
+    eng_kill(o);
 }
 void bh_mine_0(Obj *o) {
     enemy_init(o, 0x0011, 36, -16, 10, 25, 7);

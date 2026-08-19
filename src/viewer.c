@@ -109,6 +109,10 @@ int fe_stat_hits(int p) { return g.stat_hits_p[p & 1]; }
 
 /* ---- gamepads: skip keyboard/mouse receivers that GLFW reports as joysticks ---- */
 static int real_pad(int nth) {
+#ifdef __ANDROID__
+    /* raylib/Android exposes one merged gamepad (index 0) that becomes available on its first event; no name/axis info */
+    return (nth == 0 && IsGamepadAvailable(0)) ? 0 : -1;
+#endif
     int found = 0;
     for (int i = 0; i < 8; i++) {
         if (!IsGamepadAvailable(i)) continue;
@@ -256,6 +260,8 @@ static void draw_sprite_frame(Color *out, char *palname, size_t pn) {
 }
 
 #ifdef __ANDROID__
+#include <GLES2/gl2.h>
+static unsigned android_gl_error(void) { return glGetError(); }
 #include <unistd.h>
 #include <sys/stat.h>
 #include <android_native_app_glue.h>
@@ -279,7 +285,7 @@ static void android_bootstrap(void) {
 int main(int argc, char **argv) {
     const char *adf = "/home/jon/swiv-amiga-re/SWIVFIX.ADF";
 #ifdef __ANDROID__
-    android_bootstrap(); adf = "SWIVFIX.ADF";
+    adf = "SWIVFIX.ADF";
 #endif
     const char *shot = NULL; double shot_scroll = 0; int shot_frames = 10; const char *shot_file = NULL; int autofire = 0, test_go = -1, frame_no = 0;
     for (int i = 1; i < argc; i++) {
@@ -294,12 +300,17 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--pal")) sp_pal = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--scroll")) shot_scroll = atof(argv[++i]);
     }
-    if (swiv_open(&disk, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
 #ifdef __ANDROID__
     InitWindow(0, 0, "SWIV"); SetExitKey(KEY_NULL);
+#ifdef SWIV_SMOKE
+    for (int i = 0; i < 600; i++) { BeginDrawing(); ClearBackground((Color){200, 30, 30, 255}); DrawRectangle(100 + i, 100, 400, 300, GREEN); DrawText("SWIV SMOKE", 120, 120, 60, WHITE); EndDrawing();
+        if (i % 100 == 0) TraceLog(LOG_INFO, "smoke %d ft %.4f fps %d", i, GetFrameTime(), GetFPS()); }
+#endif
+    android_bootstrap();
 #else
     InitWindow(WIN_W, WIN_H, "SWIV native viewer"); SetExitKey(KEY_NULL);
 #endif
+    if (swiv_open(&disk, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
     { const char *fonts[] = { "assets/DejaVuSans.ttf", "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/noto/NotoSans-Regular.ttf", NULL };
       if (FileExists("assets/retro_recomp_logo.png")) { rr_logo = LoadTexture("assets/retro_recomp_logo.png"); SetTextureFilter(rr_logo, TEXTURE_FILTER_BILINEAR); }
       for (int i = 0; fonts[i] && !ui_font_ok; i++) if (FileExists(fonts[i])) { ui_font = LoadFontEx(fonts[i], 40, NULL, 0); ui_font_ok = ui_font.texture.id != 0; if (ui_font_ok) SetTextureFilter(ui_font.texture, TEXTURE_FILTER_BILINEAR); } }
@@ -314,6 +325,9 @@ int main(int argc, char **argv) {
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
+#ifdef __ANDROID__
+        { static int hb = 0; if ((++hb % 100) == 1) TraceLog(LOG_INFO, "heartbeat frame %d mode %d screen %dx%d render %dx%d glerr %x fps %d ready %d", hb, mode, GetScreenWidth(), GetScreenHeight(), GetRenderWidth(), GetRenderHeight(), (unsigned)android_gl_error(), GetFPS(), IsWindowReady()); }
+#endif
         vptr_update(mode != 2 || game_paused);
         if (vptr_pad >= 0 && IsGamepadButtonPressed(vptr_pad, GAMEPAD_BUTTON_MIDDLE_LEFT)) {   /* Select/Back */
             if (mode == 2 && game_paused) { mode = 3; game_on = 0; game_paused = 0; fe_game = 0; fe_start_title(); }
@@ -688,6 +702,8 @@ int main(int argc, char **argv) {
         }
         if (vptr_on) { DrawCircleV(vptr, 14, (Color){0, 0, 0, 140}); DrawCircleV(vptr, 10, (Color){255, 238, 136, 255}); }
         EndTextureMode();
+        /* own 50 Hz pacing (SetTargetFPS is not honoured on every backend, e.g. raylib/Android without vsync) */
+        { static double next_t = 0; double now = GetTime(); if (next_t == 0) next_t = now; if (now < next_t) { WaitTime(next_t - now); now = GetTime(); } next_t += 1.0 / 50.0; if (now > next_t + 0.1) next_t = now; }
         DrawTexturePro(canvas_rt.texture, (Rectangle){0, 0, WIN_W, -WIN_H}, (Rectangle){view_ox, view_oy, WIN_W * view_scale, WIN_H * view_scale}, (Vector2){0, 0}, 0, WHITE);
         EndDrawing();
         if (shot && --shot_frames == 0) { TakeScreenshot(shot); break; }

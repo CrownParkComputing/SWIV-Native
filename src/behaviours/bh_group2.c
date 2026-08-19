@@ -271,7 +271,7 @@ static void eggs_hit(Obj *o) {                          /* LAB_0610 @214230 */
     if (--o->hp > 0) { o->flags367 |= F_HIT_FLASH; return; }   /* LAB_0727 */
     o->angle = 0;
     do { fire_missile_ahead(o); o->angle += 0x10; } while (o->angle != 0);   /* LAB_0611 */
-    kill(o);                                            /* LAB_0729 */
+    eng_kill(o);                                            /* LAB_0729 */
 }
 void bh_eggs_2(Obj *o) {
     enemy_init(o, 0x041d, 32, -16, 0, 0xc8, 13);
@@ -298,7 +298,7 @@ void bh_eggs_2(Obj *o) {
  * ========================================================================================= */
 static const int16_t ANIM_BIRD[] = { A_RATE(4), 0x0015, 0x0215, 0x0415, 0x0615, 0x0415, 0x0215, A_LOOP, A_END };
 static void bird_hit(Obj *o) {                          /* LAB_061A @2143b6 */
-    if (--o->hp <= 0) { kill(o); return; }              /* BLE LAB_0729 */
+    if (--o->hp <= 0) { eng_kill(o); return; }              /* BLE LAB_0729 */
     o->y -= 6 << 16;
     o->angle = (uint8_t)((rng() & 0xf) + 0x38);
     fire_missile_ahead(o);                              /* LAB_069B */

@@ -25,3 +25,10 @@ built by reading the game's code and data out of the original and re-implementin
 `re/` holds the reverse-engineering notes (object model, verb library, porting guide, handler table).
 The headless `build/simrun` + `tools/parity.py` diff the native engine against the original's per-frame
 object log for regression testing.
+
+## Android (Retroid / any arm64 device)
+    tools/android_assets.sh            # stage the disk image, fonts, sfx maps and HOL extras into the APK assets
+    cd android && ./gradlew assembleDebug && adb install -r app/build/outputs/apk/debug/app-debug.apk
+NativeActivity + raylib 5.5 (`/home/jon/raylib-5.5-src`) + libxmp (`/home/jon/libxmp-src`), arm64-v8a. Assets are copied to the
+app's internal storage on first run. Controls: built-in/external gamepad (A fire / Start / Select = back), touch (left half steer,
+right half fire); every menu is reachable with the pad cursor. The game paces itself at 50 Hz.

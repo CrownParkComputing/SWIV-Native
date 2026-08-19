@@ -1,0 +1,70 @@
+{
+  "buildFiles": [
+    "/home/jon/SWIV-Native/android/app/src/main/cpp/CMakeLists.txt",
+    "/home/jon/libxmp-src/CMakeLists.txt",
+    "/home/jon/libxmp-src/docs/CMakeLists.txt",
+    "/home/jon/libxmp-src/examples/CMakeLists.txt",
+    "/home/jon/raylib-5.5-src/CMakeLists.txt",
+    "/home/jon/raylib-5.5-src/src/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/usr/bin/ninja",
+      "-C",
+      "/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/usr/bin/ninja",
+    "-C",
+    "/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "libxmp_gen_html::@de4cdc62e45e6e92b666": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "libxmp_gen_html"
+    },
+    "libxmp_gen_man::@de4cdc62e45e6e92b666": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "libxmp_gen_man"
+    },
+    "raylib::@7d429ebd5d102775094d": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "raylib",
+      "output": "/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/raylib/raylib/libraylib.a"
+    },
+    "swiv::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "swiv",
+      "output": "/home/jon/SWIV-Native/android/app/build/intermediates/cxx/Debug/a5476o15/obj/arm64-v8a/libswiv.so",
+      "runtimeFiles": []
+    },
+    "uninstall::@5003b8f497eeabc0006e": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "uninstall"
+    },
+    "xmp_static::@d3d09a9b787f4d5b6893": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "xmp_static",
+      "output": "/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a/libxmp/libxmp.a"
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/home/jon/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/home/jon/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": []
+}

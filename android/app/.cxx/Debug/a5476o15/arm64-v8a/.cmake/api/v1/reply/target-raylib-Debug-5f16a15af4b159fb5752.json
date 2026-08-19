@@ -1,0 +1,1696 @@
+{
+	"archive" : {},
+	"artifacts" : 
+	[
+		{
+			"path" : "raylib/raylib/libraylib.a"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"install",
+			"include",
+			"target_link_libraries",
+			"target_compile_definitions",
+			"define_if",
+			"include_directories",
+			"target_include_directories"
+		],
+		"files" : 
+		[
+			"/home/jon/raylib-5.5-src/src/CMakeLists.txt",
+			"/home/jon/raylib-5.5-src/cmake/InstallConfigurations.cmake",
+			"/home/jon/raylib-5.5-src/cmake/CompileDefinitions.cmake",
+			"/home/jon/raylib-5.5-src/cmake/LibraryConfigurations.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 57,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 116,
+				"parent" : 0
+			},
+			{
+				"file" : 1,
+				"parent" : 2
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 1,
+				"parent" : 3
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 93,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 98,
+				"parent" : 0
+			},
+			{
+				"file" : 2,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 13,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 3,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 2,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 65
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 7
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 68
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 70
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 72
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 74
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 76
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 78
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 80
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 82
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 84
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 86
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 88
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 90
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 92
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 94
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 96
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 98
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 100
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 102
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 104
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 106
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 108
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 110
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 112
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 114
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 116
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 118
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 120
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 122
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 124
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 126
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 128
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 130
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 132
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 134
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 136
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 138
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 140
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 142
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 144
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 146
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 148
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 150
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 152
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 154
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 17,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 8,
+				"parent" : 156
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 49,
+				"parent" : 0
+			},
+			{
+				"file" : 3,
+				"parent" : 158
+			},
+			{
+				"command" : 6,
+				"file" : 3,
+				"line" : 71,
+				"parent" : 159
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 101,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 11
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-no-canonical-prefixes -Wa,--noexecstack -fstack-protector-strong -funwind-tables -ffunction-sections -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -std=gnu99 -fPIC"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 8,
+					"define" : "AUDIO_DEVICE_CHANNELS=2"
+				},
+				{
+					"backtrace" : 9,
+					"define" : "AUDIO_DEVICE_FORMAT=ma_format_f32"
+				},
+				{
+					"backtrace" : 10,
+					"define" : "AUDIO_DEVICE_SAMPLE_RATE=0"
+				},
+				{
+					"backtrace" : 11,
+					"define" : "EXTERNAL_CONFIG_FLAGS"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "GRAPHICS_API_OPENGL_ES2"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "MAX_AUDIO_BUFFER_POOL_CHANNELS=16"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "MAX_AUTOMATION_EVENTS=16384"
+				},
+				{
+					"backtrace" : 15,
+					"define" : "MAX_CHAR_PRESSED_QUEUE=16"
+				},
+				{
+					"backtrace" : 16,
+					"define" : "MAX_DECOMPRESSION_SIZE=64"
+				},
+				{
+					"backtrace" : 17,
+					"define" : "MAX_FILEPATH_CAPACITY=8192"
+				},
+				{
+					"backtrace" : 18,
+					"define" : "MAX_FILEPATH_LENGTH=4096"
+				},
+				{
+					"backtrace" : 19,
+					"define" : "MAX_GAMEPADS=4"
+				},
+				{
+					"backtrace" : 20,
+					"define" : "MAX_GAMEPAD_AXIS=8"
+				},
+				{
+					"backtrace" : 21,
+					"define" : "MAX_GAMEPAD_BUTTONS=32"
+				},
+				{
+					"backtrace" : 22,
+					"define" : "MAX_GAMEPAD_VIBRATION_TIME=2.0f"
+				},
+				{
+					"backtrace" : 23,
+					"define" : "MAX_KEYBOARD_KEYS=512"
+				},
+				{
+					"backtrace" : 24,
+					"define" : "MAX_KEY_PRESSED_QUEUE=16"
+				},
+				{
+					"backtrace" : 25,
+					"define" : "MAX_MATERIAL_MAPS=12"
+				},
+				{
+					"backtrace" : 26,
+					"define" : "MAX_MESH_VERTEX_BUFFERS=7"
+				},
+				{
+					"backtrace" : 27,
+					"define" : "MAX_MESH_VERTEX_BUFFERS=9"
+				},
+				{
+					"backtrace" : 28,
+					"define" : "MAX_MOUSE_BUTTONS=8"
+				},
+				{
+					"backtrace" : 29,
+					"define" : "MAX_TEXTSPLIT_COUNT=128"
+				},
+				{
+					"backtrace" : 30,
+					"define" : "MAX_TEXT_BUFFER_LENGTH=1024"
+				},
+				{
+					"backtrace" : 31,
+					"define" : "MAX_TOUCH_POINTS=8"
+				},
+				{
+					"backtrace" : 32,
+					"define" : "MAX_TRACELOG_MSG_LENGTH=256"
+				},
+				{
+					"backtrace" : 33,
+					"define" : "PLATFORM_ANDROID"
+				},
+				{
+					"backtrace" : 34,
+					"define" : "RL_CULL_DISTANCE_FAR=1000.0"
+				},
+				{
+					"backtrace" : 35,
+					"define" : "RL_CULL_DISTANCE_NEAR=0.01"
+				},
+				{
+					"backtrace" : 36,
+					"define" : "RL_DEFAULT_BATCH_BUFFERS=1"
+				},
+				{
+					"backtrace" : 37,
+					"define" : "RL_DEFAULT_BATCH_DRAWCALLS=256"
+				},
+				{
+					"backtrace" : 38,
+					"define" : "RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS=4"
+				},
+				{
+					"backtrace" : 39,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_BONEIDS=7"
+				},
+				{
+					"backtrace" : 40,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_BONEWEIGHTS=8"
+				},
+				{
+					"backtrace" : 41,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR=3"
+				},
+				{
+					"backtrace" : 42,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_INDICES=6"
+				},
+				{
+					"backtrace" : 43,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_NORMAL=2"
+				},
+				{
+					"backtrace" : 44,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_POSITION=0"
+				},
+				{
+					"backtrace" : 45,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_TANGENT=4"
+				},
+				{
+					"backtrace" : 46,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD2=5"
+				},
+				{
+					"backtrace" : 47,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD=1"
+				},
+				{
+					"backtrace" : 48,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_NAME_COLOR=\"vertexColor\""
+				},
+				{
+					"backtrace" : 49,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_NAME_NORMAL=\"vertexNormal\""
+				},
+				{
+					"backtrace" : 50,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_NAME_POSITION=\"vertexPosition\""
+				},
+				{
+					"backtrace" : 51,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_NAME_TANGENT=\"vertexTangent\""
+				},
+				{
+					"backtrace" : 52,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_NAME_TEXCOORD2=\"vertexTexCoord2\""
+				},
+				{
+					"backtrace" : 53,
+					"define" : "RL_DEFAULT_SHADER_ATTRIB_NAME_TEXCOORD=\"vertexTexCoord\""
+				},
+				{
+					"backtrace" : 54,
+					"define" : "RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE0=\"texture0\""
+				},
+				{
+					"backtrace" : 55,
+					"define" : "RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE1=\"texture1\""
+				},
+				{
+					"backtrace" : 56,
+					"define" : "RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE2=\"texture2\""
+				},
+				{
+					"backtrace" : 57,
+					"define" : "RL_DEFAULT_SHADER_UNIFORM_NAME_COLOR=\"colDiffuse\""
+				},
+				{
+					"backtrace" : 58,
+					"define" : "RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL=\"matModel\""
+				},
+				{
+					"backtrace" : 59,
+					"define" : "RL_DEFAULT_SHADER_UNIFORM_NAME_MVP=\"mvp\""
+				},
+				{
+					"backtrace" : 60,
+					"define" : "RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL=\"matNormal\""
+				},
+				{
+					"backtrace" : 61,
+					"define" : "RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION=\"matProjection\""
+				},
+				{
+					"backtrace" : 62,
+					"define" : "RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW=\"matView\""
+				},
+				{
+					"backtrace" : 63,
+					"define" : "RL_MAX_MATRIX_STACK_SIZE=32"
+				},
+				{
+					"backtrace" : 64,
+					"define" : "RL_MAX_SHADER_LOCATIONS=32"
+				},
+				{
+					"backtrace" : 66,
+					"define" : "RL_SUPPORT_MESH_GPU_SKINNING"
+				},
+				{
+					"backtrace" : 67,
+					"define" : "SPLINE_SEGMENT_DIVISIONS=24"
+				},
+				{
+					"backtrace" : 69,
+					"define" : "SUPPORT_AUTOMATION_EVENTS"
+				},
+				{
+					"backtrace" : 71,
+					"define" : "SUPPORT_CAMERA_SYSTEM"
+				},
+				{
+					"backtrace" : 73,
+					"define" : "SUPPORT_CLIPBOARD_IMAGE"
+				},
+				{
+					"backtrace" : 75,
+					"define" : "SUPPORT_COMPRESSION_API"
+				},
+				{
+					"backtrace" : 77,
+					"define" : "SUPPORT_DEFAULT_FONT"
+				},
+				{
+					"backtrace" : 79,
+					"define" : "SUPPORT_FILEFORMAT_DDS"
+				},
+				{
+					"backtrace" : 81,
+					"define" : "SUPPORT_FILEFORMAT_FNT"
+				},
+				{
+					"backtrace" : 83,
+					"define" : "SUPPORT_FILEFORMAT_GIF"
+				},
+				{
+					"backtrace" : 85,
+					"define" : "SUPPORT_FILEFORMAT_GLTF"
+				},
+				{
+					"backtrace" : 87,
+					"define" : "SUPPORT_FILEFORMAT_IQM"
+				},
+				{
+					"backtrace" : 89,
+					"define" : "SUPPORT_FILEFORMAT_M3D"
+				},
+				{
+					"backtrace" : 91,
+					"define" : "SUPPORT_FILEFORMAT_MOD"
+				},
+				{
+					"backtrace" : 93,
+					"define" : "SUPPORT_FILEFORMAT_MP3"
+				},
+				{
+					"backtrace" : 95,
+					"define" : "SUPPORT_FILEFORMAT_MTL"
+				},
+				{
+					"backtrace" : 97,
+					"define" : "SUPPORT_FILEFORMAT_OBJ"
+				},
+				{
+					"backtrace" : 99,
+					"define" : "SUPPORT_FILEFORMAT_OGG"
+				},
+				{
+					"backtrace" : 101,
+					"define" : "SUPPORT_FILEFORMAT_PNG"
+				},
+				{
+					"backtrace" : 103,
+					"define" : "SUPPORT_FILEFORMAT_QOA"
+				},
+				{
+					"backtrace" : 105,
+					"define" : "SUPPORT_FILEFORMAT_QOI"
+				},
+				{
+					"backtrace" : 107,
+					"define" : "SUPPORT_FILEFORMAT_TTF"
+				},
+				{
+					"backtrace" : 109,
+					"define" : "SUPPORT_FILEFORMAT_VOX"
+				},
+				{
+					"backtrace" : 111,
+					"define" : "SUPPORT_FILEFORMAT_WAV"
+				},
+				{
+					"backtrace" : 113,
+					"define" : "SUPPORT_FILEFORMAT_XM"
+				},
+				{
+					"backtrace" : 115,
+					"define" : "SUPPORT_FONT_ATLAS_WHITE_REC"
+				},
+				{
+					"backtrace" : 117,
+					"define" : "SUPPORT_GESTURES_SYSTEM"
+				},
+				{
+					"backtrace" : 119,
+					"define" : "SUPPORT_GIF_RECORDING"
+				},
+				{
+					"backtrace" : 121,
+					"define" : "SUPPORT_IMAGE_EXPORT"
+				},
+				{
+					"backtrace" : 123,
+					"define" : "SUPPORT_IMAGE_GENERATION"
+				},
+				{
+					"backtrace" : 125,
+					"define" : "SUPPORT_IMAGE_MANIPULATION"
+				},
+				{
+					"backtrace" : 127,
+					"define" : "SUPPORT_MESH_GENERATION"
+				},
+				{
+					"backtrace" : 129,
+					"define" : "SUPPORT_MODULE_RAUDIO"
+				},
+				{
+					"backtrace" : 131,
+					"define" : "SUPPORT_MODULE_RMODELS"
+				},
+				{
+					"backtrace" : 133,
+					"define" : "SUPPORT_MODULE_RSHAPES"
+				},
+				{
+					"backtrace" : 135,
+					"define" : "SUPPORT_MODULE_RTEXT"
+				},
+				{
+					"backtrace" : 137,
+					"define" : "SUPPORT_MODULE_RTEXTURES"
+				},
+				{
+					"backtrace" : 139,
+					"define" : "SUPPORT_MOUSE_GESTURES"
+				},
+				{
+					"backtrace" : 141,
+					"define" : "SUPPORT_PARTIALBUSY_WAIT_LOOP"
+				},
+				{
+					"backtrace" : 143,
+					"define" : "SUPPORT_QUADS_DRAW_MODE"
+				},
+				{
+					"backtrace" : 145,
+					"define" : "SUPPORT_RPRAND_GENERATOR"
+				},
+				{
+					"backtrace" : 147,
+					"define" : "SUPPORT_SCREEN_CAPTURE"
+				},
+				{
+					"backtrace" : 149,
+					"define" : "SUPPORT_SSH_KEYBOARD_RPI"
+				},
+				{
+					"backtrace" : 151,
+					"define" : "SUPPORT_STANDARD_FILEIO"
+				},
+				{
+					"backtrace" : 153,
+					"define" : "SUPPORT_TEXT_MANIPULATION"
+				},
+				{
+					"backtrace" : 155,
+					"define" : "SUPPORT_TRACELOG"
+				},
+				{
+					"backtrace" : 157,
+					"define" : "SUPPORT_WINMM_HIGHRES_TIMER"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 160,
+					"path" : "/home/jon/Android/Sdk/ndk/29.0.14206865/sources/android/native_app_glue"
+				},
+				{
+					"backtrace" : 161,
+					"path" : "/home/jon/raylib-5.5-src/src"
+				}
+			],
+			"language" : "C",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "99"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7
+			],
+			"sysroot" : 
+			{
+				"path" : "/home/jon/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+			}
+		}
+	],
+	"id" : "raylib::@7d429ebd5d102775094d",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 4,
+				"path" : "lib"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/usr/local"
+		}
+	},
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 5,
+			"fragment" : "m"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "log"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "android"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "EGL"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "GLESv2"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "OpenSLES"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "atomic"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "c"
+		}
+	],
+	"linkLibraries" : 
+	[
+		{
+			"backtrace" : 5,
+			"fragment" : "m"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "log"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "android"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "EGL"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "GLESv2"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "OpenSLES"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "atomic"
+		},
+		{
+			"backtrace" : 5,
+			"fragment" : "c"
+		}
+	],
+	"name" : "raylib",
+	"nameOnDisk" : "libraylib.a",
+	"paths" : 
+	{
+		"build" : "raylib/raylib",
+		"source" : "/home/jon/raylib-5.5-src/src"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				8,
+				9,
+				10
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/raudio.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/rcore.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/rmodels.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/rshapes.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/rtext.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/rtextures.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/raylib-5.5-src/src/utils.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"compileGroupIndex" : 0,
+			"path" : "/home/jon/Android/Sdk/ndk/29.0.14206865/sources/android/native_app_glue/android_native_app_glue.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"path" : "/home/jon/raylib-5.5-src/src/raylib.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"path" : "/home/jon/raylib-5.5-src/src/rlgl.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"backtraces" : 
+			[
+				1
+			],
+			"path" : "/home/jon/raylib-5.5-src/src/raymath.h",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "STATIC_LIBRARY"
+}

@@ -1,0 +1,239 @@
+{
+	"configurations" : 
+	[
+		{
+			"abstractTargets" : 
+			[
+				{
+					"directoryIndex" : 3,
+					"id" : "XMP_IF::@d3d09a9b787f4d5b6893",
+					"jsonFile" : "target-XMP_IF-Debug-6825a2163fbc729b7e4d.json",
+					"name" : "XMP_IF",
+					"projectIndex" : 2
+				}
+			],
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						3
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-b23a0b23c080df4d29ba.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"build" : "raylib",
+					"childIndexes" : 
+					[
+						2
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-raylib-Debug-d0fc939d9980587510d9.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "/home/jon/raylib-5.5-src",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "raylib/raylib",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-raylib.raylib-Debug-f880094ac5081300c5f1.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 1,
+					"source" : "/home/jon/raylib-5.5-src/src",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						0
+					],
+					"build" : "libxmp",
+					"childIndexes" : 
+					[
+						4,
+						5
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-libxmp-Debug-15f76c50d8854e894a13.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.2"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "/home/jon/libxmp-src",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "libxmp/examples",
+					"jsonFile" : "directory-libxmp.examples-Debug-6391e371764764f4d221.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.2"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 2,
+					"source" : "/home/jon/libxmp-src/examples"
+				},
+				{
+					"build" : "libxmp/docs",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-libxmp.docs-Debug-206d1c0ad08507f9b179.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.2"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 2,
+					"source" : "/home/jon/libxmp-src/docs",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "swiv",
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1,
+						2
+					],
+					"name" : "raylib",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2,
+						4
+					]
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						0
+					],
+					"directoryIndexes" : 
+					[
+						3,
+						4,
+						5
+					],
+					"name" : "libxmp",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						5
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 5,
+					"id" : "libxmp_gen_html::@de4cdc62e45e6e92b666",
+					"jsonFile" : "target-libxmp_gen_html-Debug-d3affbdcddb947a964c7.json",
+					"name" : "libxmp_gen_html",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "libxmp_gen_man::@de4cdc62e45e6e92b666",
+					"jsonFile" : "target-libxmp_gen_man-Debug-36b63f2b1005d8fc0604.json",
+					"name" : "libxmp_gen_man",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "raylib::@7d429ebd5d102775094d",
+					"jsonFile" : "target-raylib-Debug-5f16a15af4b159fb5752.json",
+					"name" : "raylib",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "swiv::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-swiv-Debug-e4c44dc70b77325c84f2.json",
+					"name" : "swiv",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "uninstall::@5003b8f497eeabc0006e",
+					"jsonFile" : "target-uninstall-Debug-0bf9d38a8bf3ae1a97ab.json",
+					"name" : "uninstall",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "xmp_static::@d3d09a9b787f4d5b6893",
+					"jsonFile" : "target-xmp_static-Debug-cb4cd057730ce3b97db2.json",
+					"name" : "xmp_static",
+					"projectIndex" : 2
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/jon/SWIV-Native/android/app/.cxx/Debug/a5476o15/arm64-v8a",
+		"source" : "/home/jon/SWIV-Native/android/app/src/main/cpp"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 11
+	}
+}

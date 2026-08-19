@@ -123,7 +123,7 @@ int  yield_vbls(Obj *o, int n);         /* LAB_049D/049C: plain yields until the
 void enemy_init(Obj *o, uint16_t gfx, uint16_t mask, int margin, int hp, int score, int threat);  /* LAB_0720 (may yield) */
 void enemy_cleanup(Obj *o);             /* LAB_0724 */
 void on_bullet_hit(Obj *o);             /* LAB_0728 (default bit0/3/4 handler installed by enemy_init) */
-void kill(Obj *o);                      /* LAB_0729: score, death effect, popup, signal */
+void eng_kill(Obj *o);                      /* LAB_0729: score, death effect, popup, signal */
 /* death effect scripts (src/engine/effects.c) */
 void fx_explosion(Obj *o);              /* LAB_0634 */
 void fx_explosion_silent(Obj *o);       /* LAB_0635 */

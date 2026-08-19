@@ -1,0 +1,62 @@
+{
+	"abstract" : true,
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"/home/jon/libxmp-src/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 238,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 240,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 11
+	},
+	"id" : "XMP_IF::@d3d09a9b787f4d5b6893",
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "xmp_static::@d3d09a9b787f4d5b6893"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "xmp_static::@d3d09a9b787f4d5b6893"
+		}
+	],
+	"name" : "XMP_IF",
+	"paths" : 
+	{
+		"build" : "libxmp",
+		"source" : "/home/jon/libxmp-src"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

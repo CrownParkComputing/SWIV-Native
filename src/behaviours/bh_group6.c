@@ -49,7 +49,7 @@ static void boss_hit(Obj *o) {
     if (g.heli.alive) g.heli.score += o->score;
     if (g.jeep.alive) g.jeep.score += o->score;
     if (g.boss140 <= 1) smart_bomb(o);
-    kill(o);
+    eng_kill(o);
 }
 /* LAB_07E3 @ $21791a: boss damage tick: wobble + smoke/flame when hp <= 50, then one step.
  * (engine boss_smoke() lacks the LAB_05E9 flame spawn and the step, so it is re-done here) */
@@ -169,7 +169,7 @@ static void inst3_drone(Obj *o) {
     for (;;) {                                          /* LAB_07F4 */
         if (step(o)) return;
         if (g.boss140) continue;
-        kill(o); return;
+        eng_kill(o); return;
     }
 }
 void bh_inst3_12(Obj *o) {
@@ -518,7 +518,7 @@ static void inst5_hit(Obj *o) {
     while (fade142) { screen_shake(o); fade11170 += 0x10 * 2 * g.vbl_per_tick; if (fade11170 >= 0x100) { fade11170 = 0x100; fade142 = 0; } }
     /* 11260/11440(A6).l = -1 (player-record +84), 12353 bit3 = level complete */
     state12353 |= 8;
-    kill(o);
+    eng_kill(o);
 }
 void bh_inst5_0(Obj *o) {
     for (;;) {                                          /* LAB_080C: wait for the boss flag */
@@ -613,7 +613,7 @@ static int goose_head_swing(Obj *o, int d) {           /* LAB_0876 (+8) / LAB_08
 static void goose_head(Obj *o) {
     o->cb538_disabled = 1;
     enemy_init(o, 0x1017, 34, -32, 0, 0, 10);
-    o->cb534 = NULL; o->cb542 = kill;                   /* orphaned head dies with a kill() */
+    o->cb534 = NULL; o->cb542 = eng_kill;                   /* orphaned head dies with a eng_kill() */
     o->vx = 0; o->vy = PX(0x18); o->vz = PX(1);
     anim_start(o, GOOSE_HEAD_ANIM);
     o->x = PX((rng() & 0xff) + 0x20); o->y = PX((int16_t)(g.scroll3542 - 24));
@@ -646,7 +646,7 @@ static void goose_hit(Obj *o) {
     int d = 2; if (!((uint16_t)o->w[2] > 0x1f4)) d++;   /* BHI skips the ADDQ */
     goose_bombs(o, d);
     sfx(SFX_ENEMY_DESTROYED, XI(o));                            /* LAB_0628 */
-    kill(o);
+    eng_kill(o);
 }
 void bh_goose_0(Obj *o) {
     tail_count163 = -1;

@@ -245,16 +245,16 @@ void enemy_init(Obj *o, uint16_t gfx, uint16_t mask, int margin, int hp, int sco
     set_frame(o, gfx);
     o->hp = hp;
     if (hp) { on_event(o, EV_BULLET, on_bullet_hit); if (mask & 4) on_event(o, EV_TOUCH_HELI, on_bullet_hit); if (mask & 2) on_event(o, EV_TOUCH_JEEP, on_bullet_hit); }
-    o->cb534 = kill;
+    o->cb534 = eng_kill;
     g.threat156 += threat;
 }
 void enemy_cleanup(Obj *o) { g.threat156 -= o->threat; o->threat = 0; gfx_release(o, o->gfxset); box_unlink(o); }
 void on_bullet_hit(Obj *o) {
     if (o->box.hits & 0xC0) { g.stat_hits++; if (o->box.hits & 0x40) g.stat_hits_p[0]++; else g.stat_hits_p[1]++; }
     if (--o->hp > 0) { sfx(SFX_HIT, o->x >> 16); o->flags367 |= F_HIT_FLASH; return; }
-    kill(o);
+    eng_kill(o);
 }
-void kill(Obj *o) {
+void eng_kill(Obj *o) {
     g.stat_destroyed12498++;                                                      /* ADDQ.L #1,12498(A6) @ $21608a */
     if (o->box.hits & 0x40) g.heli.score += o->score; else if (o->box.hits & 0x80) g.jeep.score += o->score;
     if (o->death376) eng_spawn(o, o->death376, 100);
