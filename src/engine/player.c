@@ -18,7 +18,8 @@
 #include "engine.h"
 #include <string.h>
 
-int player_input_dx, player_input_dy, player_input_fire;   /* set by the frontend each VBL */
+int player_input_dx, player_input_dy, player_input_fire;   /* set by the frontend each VBL (player 1 = heli) */
+int player2_input_dx, player2_input_dy, player2_input_fire;  /* player 2 = jeep */
 RenderEntry player_bullet_render[60]; int player_bullet_count;   /* (viewer copies up to 30: count is capped at 30) */
 
 #define VBLS g.vbl_per_tick
@@ -107,6 +108,7 @@ static void bullet_task(Obj *o) {
 }
 /* per-VBL snapshot of the live bullets for the renderer (blit nodes at 26 of each entry; LAB_04AB inserts them) */
 void player_vbl(void) {
+    if (!g.jeep.joined55 && player2_input_fire) g.jeep.joined55 = 1;     /* LAB_055A: port-1 fire joins the jeep */
     player_bullet_count = 0;
     for (int t = 0; t < 2; t++) for (int i = 0; i < 30; i++) {
         PBullet *b = &pb_tbl[t][i];
@@ -416,12 +418,12 @@ static void jeep_B_0649(Obj *o) { jeep_common(o, &JEEP_B); }
 /* LAB_056D @ $212ea4: build the joystick word 64(rec) from the raw input: dir nibble (bit0 up, 1 down, 2 left, 3 right),
  * bit7 = raw button, bit6 = double-tap (LAB_057A), bit5 = fire after the cooldown (LAB_057D) */
 static int read_input_056D(struct Player *p) {
-    int d0 = 0;
-    if (player_input_dy < 0) d0 |= 1;
-    if (player_input_dy > 0) d0 |= 2;
-    if (player_input_dx < 0) d0 |= 4;
-    if (player_input_dx > 0) d0 |= 8;
-    if (player_input_fire) d0 |= 0x80;
+    int d0 = 0; int idx = (p == &g.jeep) ? player2_input_dx : player_input_dx, idy = (p == &g.jeep) ? player2_input_dy : player_input_dy, ifire = (p == &g.jeep) ? player2_input_fire : player_input_fire;
+    if (idy < 0) d0 |= 1;
+    if (idy > 0) d0 |= 2;
+    if (idx < 0) d0 |= 4;
+    if (idx > 0) d0 |= 8;
+    if (ifire) d0 |= 0x80;
     p->joy66 = (int16_t)d0;
     /* LAB_057A: double-tap detector on the direction nibble */
     int d7 = d0 & 15;

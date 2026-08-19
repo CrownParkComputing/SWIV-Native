@@ -8,6 +8,7 @@ extern int audio_bank_count(void); extern const char *audio_bank_name(int i); ex
 extern int audio_event_bank(int ev); extern void audio_event_set(int ev, int bank); extern void audio_map_save(void);
 extern float audio_tune_get(int i, int what); extern void audio_tune_set(int i, int what, float v); extern void audio_tune_save(void); extern int audio_bank_frames(int i);
 extern int player_input_dx, player_input_dy, player_input_fire;
+extern int player2_input_dx, player2_input_dy, player2_input_fire;
 extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 #include "raylib.h"
 #include <stdio.h>
@@ -252,6 +253,20 @@ int main(int argc, char **argv) {
             }
             if (!tc && !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) stick_on = 0;
             player_input_dx = dx; player_input_dy = dy; player_input_fire = fire;
+            /* gamepad 0 also drives player 1 */
+            if (IsGamepadAvailable(0)) { float ax = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
+                if (ax < -0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) player_input_dx = -1; if (ax > 0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) player_input_dx = 1;
+                if (ay < -0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) player_input_dy = -1; if (ay > 0.4f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) player_input_dy = 1;
+                if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) player_input_fire = 1; }
+            /* player 2 (jeep): WASD + left shift/ctrl, or gamepad 1 */
+            int dx2 = 0, dy2 = 0, f2 = 0;
+            if (IsKeyDown(KEY_A)) dx2 = -1; if (IsKeyDown(KEY_D)) dx2 = 1; if (IsKeyDown(KEY_W)) dy2 = -1; if (IsKeyDown(KEY_S)) dy2 = 1;
+            if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL)) f2 = 1;
+            if (IsGamepadAvailable(1)) { float ax = GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_Y);
+                if (ax < -0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) dx2 = -1; if (ax > 0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) dx2 = 1;
+                if (ay < -0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_UP)) dy2 = -1; if (ay > 0.4f || IsGamepadButtonDown(1, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) dy2 = 1;
+                if (IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) f2 = 1; }
+            player2_input_dx = dx2; player2_input_dy = dy2; player2_input_fire = f2;
             if (!game_paused) { eng_vbl(); player_vbl(); }
             /* render: terrain window then sprites (descending key) */
             static uint8_t idx[VIEW_W * VIEW_H]; static uint16_t rowpal[VIEW_H][16];
@@ -390,10 +405,11 @@ int main(int argc, char **argv) {
             /* HUD over the top band of the playfield (the original's panel rows) */
             DrawRectangle(0, 0, WIN_W, 36 * SCALE / 2, (Color){0, 0, 0, 160});
             char h[128];
-            snprintf(h, sizeof h, "HELI %06d", g.heli.score); ui_text(h, 16, 10, 30, (Color){255, 238, 136, 255});
+            snprintf(h, sizeof h, "PLAYER 1  %06d", g.heli.score); ui_text(h, 16, 10, 30, (Color){255, 238, 136, 255});
             for (int i = 0; i < g.heli.lives68; i++) DrawRectangle(16 + i * 18, 44, 12, 6, (Color){255, 238, 136, 255});
             snprintf(h, sizeof h, "HI %06d", g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score); ui_text(h, (WIN_W - ui_measure(h, 30)) / 2, 10, 30, RAYWHITE);
-            snprintf(h, sizeof h, "JEEP %06d", g.jeep.score); ui_text(h, WIN_W - 16 - ui_measure(h, 30), 10, 30, (Color){136, 221, 255, 255});
+            if (g.jeep.joined55) snprintf(h, sizeof h, "PLAYER 2  %06d", g.jeep.score); else snprintf(h, sizeof h, "PLAYER 2  PRESS FIRE"); ui_text(h, WIN_W - 16 - ui_measure(h, 30), 10, 30, (Color){136, 221, 255, 255});
+            for (int i = 0; i < g.jeep.lives68 && g.jeep.joined55; i++) DrawRectangle(WIN_W - 28 - i * 18, 44, 12, 6, (Color){136, 221, 255, 255});
             if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
             if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
         }
