@@ -174,7 +174,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--scroll")) shot_scroll = atof(argv[++i]);
     }
     if (swiv_open(&disk, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
-    InitWindow(WIN_W, WIN_H, "SWIV native viewer");
+    InitWindow(WIN_W, WIN_H, "SWIV native viewer"); SetExitKey(KEY_NULL);
+    { const char *fonts[] = { "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/noto/NotoSans-Regular.ttf", NULL };
+      for (int i = 0; fonts[i] && !ui_font_ok; i++) if (FileExists(fonts[i])) { ui_font = LoadFontEx(fonts[i], 40, NULL, 0); ui_font_ok = ui_font.texture.id != 0; if (ui_font_ok) SetTextureFilter(ui_font.texture, TEXTURE_FILTER_BILINEAR); } }
     if (!shot) audio_init(&disk);
     SetTargetFPS(50);
     img = GenImageColor(VIEW_W, VIEW_H, BLACK); tex = LoadTextureFromImage(img);
@@ -286,7 +288,7 @@ int main(int argc, char **argv) {
                 char l[128];
                 ui_text(sfx_event_names[e], x0, y + 14, 26, (Color){255, 238, 136, 255});
                 if (button((Rectangle){x0 + 260, y, 56, 52}, "<", 0)) { b = (b <= 0 ? nb : b) - 1; audio_event_set(e, b); audio_bank_play(b); }
-                snprintf(l, sizeof l, "%s  %s", b >= 0 ? audio_bank_name(b) : "(builtin)", b >= 0 ? audio_bank_label(b) : "");
+                snprintf(l, sizeof l, "%s", b >= 0 ? audio_bank_label(b) : "(builtin)");
                 if (button((Rectangle){x0 + 324, y, 640, 52}, l, 0)) sfx(e, 160);
                 if (button((Rectangle){x0 + 972, y, 56, 52}, ">", 0)) { b = (b + 1) % (nb ? nb : 1); audio_event_set(e, b); audio_bank_play(b); }
             }
