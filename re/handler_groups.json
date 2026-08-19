@@ -1,0 +1,409 @@
+[
+ {
+  "group": 1,
+  "lo": 2175688,
+  "hi": 2178040,
+  "handlers": [
+   {
+    "addr": "0x2132c8",
+    "name": "AIRMINE.LIN#0",
+    "cfunc": "bh_airmine_0"
+   },
+   {
+    "addr": "0x213318",
+    "name": "SKYEYEA.LIN#0",
+    "cfunc": "bh_skyeyea_0"
+   },
+   {
+    "addr": "0x21340c",
+    "name": "SKYEYEB.LIN#8",
+    "cfunc": "bh_skyeyeb_8"
+   },
+   {
+    "addr": "0x2134e6",
+    "name": "EDGE.LIN#0",
+    "cfunc": "bh_edge_0"
+   },
+   {
+    "addr": "0x21358e",
+    "name": "BUNNY.LIN#2",
+    "cfunc": "bh_bunny_2"
+   },
+   {
+    "addr": "0x21363a",
+    "name": "XEVIOUS.LIN#5",
+    "cfunc": "bh_xevious_5"
+   },
+   {
+    "addr": "0x213690",
+    "name": "_AIRPORT.LIN#14",
+    "cfunc": "bh__airport_14"
+   },
+   {
+    "addr": "0x2136f4",
+    "name": "MILL.LIN#0",
+    "cfunc": "bh_mill_0"
+   },
+   {
+    "addr": "0x21374c",
+    "name": "DADA.LIN#0",
+    "cfunc": "bh_dada_0"
+   },
+   {
+    "addr": "0x2137b8",
+    "name": "BLACKJET.LIN#0",
+    "cfunc": "bh_blackjet_0"
+   },
+   {
+    "addr": "0x21380a",
+    "name": "BOS.LIN#0",
+    "cfunc": "bh_bos_0"
+   },
+   {
+    "addr": "0x2138ca",
+    "name": "MAMA.LIN#0",
+    "cfunc": "bh_mama_0"
+   },
+   {
+    "addr": "0x213b08",
+    "name": "TILT.LIN#0",
+    "cfunc": "bh_tilt_0"
+   }
+  ]
+ },
+ {
+  "group": 2,
+  "lo": 2178040,
+  "hi": 2185270,
+  "handlers": [
+   {
+    "addr": "0x213bf8",
+    "name": "XEVIOUS.LIN#9",
+    "cfunc": "bh_xevious_9"
+   },
+   {
+    "addr": "0x213d68",
+    "name": "FODDERA.LIN#2",
+    "cfunc": "bh_foddera_2"
+   },
+   {
+    "addr": "0x213e86",
+    "name": "_ONERIG.LIN#0",
+    "cfunc": "bh__onerig_0"
+   },
+   {
+    "addr": "0x213f2c",
+    "name": "_CORN.LIN#7",
+    "cfunc": "bh__corn_7"
+   },
+   {
+    "addr": "0x213f8a",
+    "name": "TRILO.LIN#4",
+    "cfunc": "bh_trilo_4"
+   },
+   {
+    "addr": "0x214064",
+    "name": "VTOL.LIN#0",
+    "cfunc": "bh_vtol_0"
+   },
+   {
+    "addr": "0x2140fc",
+    "name": "FROG.LIN#0",
+    "cfunc": "bh_frog_0"
+   },
+   {
+    "addr": "0x214198",
+    "name": "EGGS.LIN#2",
+    "cfunc": "bh_eggs_2"
+   },
+   {
+    "addr": "0x21434e",
+    "name": "BIRD.LIN#0",
+    "cfunc": "bh_bird_0"
+   },
+   {
+    "addr": "0x2143dc",
+    "name": "YELLOW.LIN#0",
+    "cfunc": "bh_yellow_0"
+   },
+   {
+    "addr": "0x2144b4",
+    "name": "GOOSE.LIN#7",
+    "cfunc": "bh_goose_7"
+   },
+   {
+    "addr": "0x21566e",
+    "name": "ROTOBASE.LIN#12",
+    "cfunc": "bh_rotobase_12"
+   },
+   {
+    "addr": "0x215700",
+    "name": "TAP.LIN#0",
+    "cfunc": "bh_tap_0"
+   }
+  ]
+ },
+ {
+  "group": 3,
+  "lo": 2185270,
+  "hi": 2188238,
+  "handlers": [
+   {
+    "addr": "0x215836",
+    "name": "MINE.LIN#0",
+    "cfunc": "bh_mine_0"
+   },
+   {
+    "addr": "0x21589e",
+    "name": "TRAIN.LIN#0",
+    "cfunc": "bh_train_0"
+   },
+   {
+    "addr": "0x2159c0",
+    "name": "JETS.LIN#0",
+    "cfunc": "bh_jets_0"
+   },
+   {
+    "addr": "0x215a3e",
+    "name": "JETS.LIN#1",
+    "cfunc": "bh_jets_1"
+   },
+   {
+    "addr": "0x215a84",
+    "name": "TRUCK.LIN#0",
+    "cfunc": "bh_truck_0"
+   },
+   {
+    "addr": "0x215b24",
+    "name": "FLATTANK.LIN#0",
+    "cfunc": "bh_flattank_0"
+   },
+   {
+    "addr": "0x215b80",
+    "name": "SKI.LIN#0",
+    "cfunc": "bh_ski_0"
+   },
+   {
+    "addr": "0x215bea",
+    "name": "MEDTANK.LIN#0",
+    "cfunc": "bh_medtank_0"
+   },
+   {
+    "addr": "0x215df2",
+    "name": "JUNTANK.LIN#1",
+    "cfunc": "bh_juntank_1"
+   },
+   {
+    "addr": "0x215ed0",
+    "name": "DESTRAIN.LIN#3",
+    "cfunc": "bh_destrain_3"
+   },
+   {
+    "addr": "0x2160d2",
+    "name": "_PLAT.LIN#9",
+    "cfunc": "bh__plat_9"
+   },
+   {
+    "addr": "0x2160d8",
+    "name": "_PLAT.LIN#10",
+    "cfunc": "bh__plat_10"
+   },
+   {
+    "addr": "0x2162b2",
+    "name": "JUNTANK.LIN#2",
+    "cfunc": "bh_juntank_2"
+   }
+  ]
+ },
+ {
+  "group": 4,
+  "lo": 2188238,
+  "hi": 2190524,
+  "handlers": [
+   {
+    "addr": "0x2163ce",
+    "name": "POPUP.LIN#0",
+    "cfunc": "bh_popup_0"
+   },
+   {
+    "addr": "0x21648e",
+    "name": "DIAGUN.LIN#2",
+    "cfunc": "bh_diagun_2"
+   },
+   {
+    "addr": "0x2164a8",
+    "name": "DIAGUN.LIN#4",
+    "cfunc": "bh_diagun_4"
+   },
+   {
+    "addr": "0x216586",
+    "name": "PYRAMID.LIN#1",
+    "cfunc": "bh_pyramid_1"
+   },
+   {
+    "addr": "0x216604",
+    "name": "EGGS.LIN#12",
+    "cfunc": "bh_eggs_12"
+   },
+   {
+    "addr": "0x216700",
+    "name": "PROXMINE.LIN#0",
+    "cfunc": "bh_proxmine_0"
+   },
+   {
+    "addr": "0x216830",
+    "name": "FLAME.LIN#0",
+    "cfunc": "bh_flame_0"
+   },
+   {
+    "addr": "0x216932",
+    "name": "CAMOGUN.LIN#0",
+    "cfunc": "bh_camogun_0"
+   },
+   {
+    "addr": "0x21698a",
+    "name": "JEEPHELI.LIN#23",
+    "cfunc": "bh_jeepheli_23"
+   },
+   {
+    "addr": "0x2169d6",
+    "name": "JEEPHELI.LIN#31",
+    "cfunc": "bh_jeepheli_31"
+   },
+   {
+    "addr": "0x216a50",
+    "name": "JEEPHELI.LIN#43",
+    "cfunc": "bh_jeepheli_43"
+   },
+   {
+    "addr": "0x216b12",
+    "name": "XEVIOUS.LIN#0",
+    "cfunc": "bh_xevious_0"
+   },
+   {
+    "addr": "0x216bfc",
+    "name": "TINYTRUK.LIN#0",
+    "cfunc": "bh_tinytruk_0"
+   }
+  ]
+ },
+ {
+  "group": 5,
+  "lo": 2190524,
+  "hi": 2193416,
+  "handlers": [
+   {
+    "addr": "0x216cbc",
+    "name": "_LAVA.LIN#20",
+    "cfunc": "bh__lava_20"
+   },
+   {
+    "addr": "0x216da4",
+    "name": "ORB.LIN#0",
+    "cfunc": "bh_orb_0"
+   },
+   {
+    "addr": "0x216ec8",
+    "name": "FISH.LIN#0",
+    "cfunc": "bh_fish_0"
+   },
+   {
+    "addr": "0x216f4a",
+    "name": "_RIGS.LIN#4",
+    "cfunc": "bh__rigs_4"
+   },
+   {
+    "addr": "0x216f8c",
+    "name": "LAKEGUN.LIN#0",
+    "cfunc": "bh_lakegun_0"
+   },
+   {
+    "addr": "0x216ffc",
+    "name": "LAKEGUN.LIN#7",
+    "cfunc": "bh_lakegun_7"
+   },
+   {
+    "addr": "0x21706a",
+    "name": "LAKESUB.LIN#0",
+    "cfunc": "bh_lakesub_0"
+   },
+   {
+    "addr": "0x217186",
+    "name": "HOVER.LIN#4",
+    "cfunc": "bh_hover_4"
+   },
+   {
+    "addr": "0x2172bc",
+    "name": "SEAPLANE.LIN#0",
+    "cfunc": "bh_seaplane_0"
+   },
+   {
+    "addr": "0x2173ee",
+    "name": "INST1.LIN#14",
+    "cfunc": "bh_inst1_14"
+   },
+   {
+    "addr": "0x217530",
+    "name": "INST1.LIN#11",
+    "cfunc": "bh_inst1_11"
+   },
+   {
+    "addr": "0x217674",
+    "name": "INST1.LIN#9",
+    "cfunc": "bh_inst1_9"
+   },
+   {
+    "addr": "0x2176fa",
+    "name": "INST2.LIN#2",
+    "cfunc": "bh_inst2_2"
+   }
+  ]
+ },
+ {
+  "group": 6,
+  "lo": 2193416,
+  "hi": 2202260,
+  "handlers": [
+   {
+    "addr": "0x217808",
+    "name": "INST2.LIN#0",
+    "cfunc": "bh_inst2_0"
+   },
+   {
+    "addr": "0x21784e",
+    "name": "INST3.LIN#3",
+    "cfunc": "bh_inst3_3"
+   },
+   {
+    "addr": "0x217a5a",
+    "name": "INST3.LIN#12",
+    "cfunc": "bh_inst3_12"
+   },
+   {
+    "addr": "0x217af6",
+    "name": "INST4.LIN#6",
+    "cfunc": "bh_inst4_6"
+   },
+   {
+    "addr": "0x217b8e",
+    "name": "INST4.LIN#0",
+    "cfunc": "bh_inst4_0"
+   },
+   {
+    "addr": "0x217c62",
+    "name": "INST4.LIN#3",
+    "cfunc": "bh_inst4_3"
+   },
+   {
+    "addr": "0x217d88",
+    "name": "INST5.LIN#0",
+    "cfunc": "bh_inst5_0"
+   },
+   {
+    "addr": "0x2184aa",
+    "name": "GOOSE.LIN#0",
+    "cfunc": "bh_goose_0"
+   }
+  ]
+ }
+]
