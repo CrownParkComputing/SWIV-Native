@@ -401,12 +401,6 @@ int main(int argc, char **argv) {
         }
         int dev = (debug_ui || (mode == 0 || mode == 1)) && mode != 5;      /* dev bar in map/sprite modes or when DEBUG is on */
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
-        if (mode == 3) {
-            const char *l = "PORT 1  JEEP"; const char *l2 = "WASD + Shift  /  pad 1  /  tap left"; const char *r = "PORT 2  HELICOPTER"; const char *r2 = "arrows + Space  /  pad 0  /  tap right";
-            int yb = VIEW_H * SCALE - 60;
-            ui_text(l, 40, yb - 40, 30, (Color){136, 221, 255, 255}); ui_text(l2, 40, yb - 4, 20, LIGHTGRAY);
-            ui_text(r, WIN_W - 40 - ui_measure(r, 30), yb - 40, 30, (Color){255, 238, 136, 255}); ui_text(r2, WIN_W - 40 - ui_measure(r2, 20), yb - 4, 20, LIGHTGRAY);
-        }
         if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; ui_text(t, (WIN_W - ui_measure(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); ui_text(t, (WIN_W - ui_measure(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
         if (mode == 3) g.vbl++;
         float r1 = by + 26, r2 = by + 72, bh = 40;
@@ -426,7 +420,7 @@ int main(int argc, char **argv) {
             if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
             if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
             if (button((Rectangle){WIN_W - 364, r1, 120, bh}, "QUIT", 0)) { CloseWindow(); return 0; }
-            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        ";
+            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        PORT 1 JEEP: WASD + Shift / pad 1 / tap left  --  PORT 2 HELICOPTER: arrows + Space / pad 0 / tap right  --  press fire to start, P pauses, ESC (paused) for menu        ";
               int lw = 0; if (rr_logo.id) { float lsc = (BAR_H - 16) / (float)rr_logo.height; lw = (int)(rr_logo.width * lsc) + 24; DrawTextureEx(rr_logo, (Vector2){8, by + 8}, 0, lsc, WHITE); }
               int fs = 26, w = ui_measure(msg, fs); mx -= 1.5f; if (mx < -w) mx += w;
               BeginScissorMode(lw, r2, WIN_W - lw, bh); ui_text(msg, lw + (int)mx, r2 + 10, fs, (Color){255, 238, 136, 255}); ui_text(msg, lw + (int)mx + w, r2 + 10, fs, (Color){255, 238, 136, 255}); EndScissorMode(); }
