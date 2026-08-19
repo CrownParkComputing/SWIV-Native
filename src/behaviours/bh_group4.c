@@ -58,7 +58,7 @@ __attribute__((unused)) static void zone_popup_0771(Obj *o) {
     /* MOVE.W #$0140,418(A5): renderer param of blit slot A -- no field in the native Obj (noted in report) */
     int sy = (int16_t)((o->y >> 16) - g.scroll3542);
     if (sy >= 0 && sy < 256) {
-        wait_ticks(o, 1); o->y -= 320 << 16; wait_ticks(o, 1);
+        wait_vbls(o, 1); o->y -= 320 << 16; wait_vbls(o, 1);
     }
     eng_free(o);
 }
@@ -80,9 +80,9 @@ static void popup_shot_0748(Obj *o) {
     set_frame(o, 0x100e);
     int dx = 6; o->w[0] = (int16_t)~o->w[0]; if (o->w[0] < 0) dx = -6;
     fire_homing(o, dx, 20, 64);
-    wait_ticks(o, 5);
+    wait_vbls(o, 5);
     set_frame(o, 0x0e0e);
-    wait_ticks(o, 20);              /* result not checked by the original */
+    wait_vbls(o, 20);              /* result not checked by the original */
 }
 void bh_popup_0(Obj *o) {
     int margin = (int)(rng() & 63) + 64;
@@ -92,10 +92,10 @@ void bh_popup_0(Obj *o) {
     sfx(SFX_PICKUP, o->x >> 16);                     /* LAB_03F3 */
     anim_start(o, POPUP_UP);
     o->box.mask = 0x20;
-    wait_ticks(o, 50);                               /* result not checked */
+    wait_vbls(o, 50);                               /* result not checked */
     o->box.mask = 0x24;
     for (int n = (g.difficulty182 >> 1) + 1; n > 0; n--) popup_shot_0748(o);   /* LAB_0746 */
-    wait_ticks(o, 50);
+    wait_vbls(o, 50);
     anim_start(o, POPUP_DOWN);
     wait_signal(o);
 }
@@ -118,14 +118,14 @@ static void diagun_bullet_074e(Obj *o) {
 static int diagun_fire_074d(Obj *o) {
     set_frame(o, (uint16_t)o->w[1]);
     spawn(diagun_bullet_074e);
-    wait_ticks(o, 5);                                /* result not checked */
+    wait_vbls(o, 5);                                /* result not checked */
     set_frame(o, (uint16_t)o->w[0]);
-    return wait_ticks(o, 30);
+    return wait_vbls(o, 30);
 }
 static void diagun_body_074a(Obj *o) {
     enemy_init(o, (uint16_t)o->w[0], 36, -48, 7, 80, 18);
     o->death376 = fx_wreck;
-    wait_ticks(o, 100);                              /* result not checked */
+    wait_vbls(o, 100);                              /* result not checked */
     o->w[2] = 15;
     for (;;) {                                       /* LAB_074B */
         if (diagun_fire_074d(o)) break;
@@ -150,7 +150,7 @@ static const int16_t PYRAMID_ANIM[] = { A_RATE(8), 0x0421, 0x0621, 0x0821, 0x0a2
 static void pyramid_shot_0751(Obj *o) {
     int dx = 6; o->w[0] = (int16_t)~o->w[0]; if (o->w[0] < 0) dx = -6;
     fire_homing(o, dx, 20, 64);
-    wait_ticks(o, 20);                               /* result not checked */
+    wait_vbls(o, 20);                               /* result not checked */
 }
 void bh_pyramid_1(Obj *o) {
     gfx_acquire(o, 6);
@@ -158,7 +158,7 @@ void bh_pyramid_1(Obj *o) {
     wait_onscreen_noevents(o, 64);                   /* result not checked */
     o->death376 = fx_wreck;
     anim_start(o, PYRAMID_ANIM);
-    if (!wait_ticks(o, 100)) {
+    if (!wait_vbls(o, 100)) {
         for (int n = 2 + g.difficulty182; n > 0; n--) pyramid_shot_0751(o);   /* LAB_074F */
         wait_signal(o);
     }
@@ -188,7 +188,7 @@ static void egg_body_0756(Obj *o, uint16_t gfx) {
     o->w[0] = 16;
     for (;;) {                                       /* LAB_0757 */
         spawn(egg_bomb_0759);
-        if (wait_ticks(o, 100)) return;
+        if (wait_vbls(o, 100)) return;
         if (--o->w[0] == 0) break;
     }
     wait_signal(o);
@@ -232,10 +232,10 @@ void bh_proxmine_0(Obj *o) {
     sfx(SFX_PICKUP, o->x >> 16);                     /* LAB_03F3 */
     anim_start(o, PROXMINE_ARM);
     o->box.mask = 0x20;
-    wait_ticks(o, 100);                              /* result not checked */
+    wait_vbls(o, 100);                              /* result not checked */
     o->box.mask = 0x24;
     for (;;) {                                       /* LAB_075A */
-        if (wait_ticks(o, 10)) return;
+        if (wait_vbls(o, 10)) return;
         int tx, ty;
         if (!nearest_player(&tx, &ty)) continue;
         int dx = (int16_t)(tx - (o->x >> 16)); if (dx < 0) dx = -dx;
@@ -266,7 +266,7 @@ static void flame_puff_0765(Obj *o) {
     enemy_init(o, 0x0013, 4, 0, 0, 0, 10);
     o->vx = 0x28000;
     anim_start(o, FLAME_PUFF);
-    wait_ticks(o, 35);
+    wait_vbls(o, 35);
 }
 /* LAB_0762 @ $216898: attached flickering flame column, spawns a puff every 100 ticks */
 static void flame_column_0762(Obj *o) {
@@ -275,7 +275,7 @@ static void flame_column_0762(Obj *o) {
     o->x += 0x0c << 16;
     anim_start(o, FLAME_FLICKER);
     for (;;) {                                       /* LAB_0763 */
-        if (wait_ticks(o, 100)) return;
+        if (wait_vbls(o, 100)) return;
         spawn(flame_puff_0765);
     }
 }
@@ -286,9 +286,9 @@ void bh_flame_0(Obj *o) {
     sfx(SFX_PICKUP, o->x >> 16);                     /* LAB_03F3 */
     anim_start(o, FLAME_RISE);
     o->box.mask = 0x20;
-    wait_ticks(o, 24);                               /* result not checked */
+    wait_vbls(o, 24);                               /* result not checked */
     spawn_attached(flame_column_0762);               /* LAB_04C9 */
-    wait_ticks(o, 50);
+    wait_vbls(o, 50);
     o->box.mask = 0x24;
     wait_signal(o);
 }
@@ -301,7 +301,7 @@ void bh_camogun_0(Obj *o) {
     enemy_init(o, 0x0016, 36, -16, 2, 40, 10);
     o->animA.flags |= 1;
     for (;;) {                                       /* LAB_0766 */
-        if (wait_ticks(o, 100)) return;
+        if (wait_vbls(o, 100)) return;
         o->angle = 0x40;
         fire_missile_fast(o);                        /* LAB_069A (D0=0,D1=8 are ignored by it) */
         o->y -= 8 << 16;                             /* recoil */
@@ -377,9 +377,9 @@ static void xevious_prop_077c(Obj *o) {
     o->vz = 1 << 16;                                 /* MOVE.W #1,340(A5) */
     for (;;) {                                       /* LAB_077D */
         anim_start(o, XEV_PROP_ANIM);
-        if (wait_ticks(o, 8)) return;
+        if (wait_vbls(o, 8)) return;
         spawn(fireball_05e9);
-        if (wait_ticks(o, 100)) return;
+        if (wait_vbls(o, 100)) return;
     }
 }
 void bh_xevious_0(Obj *o) {
@@ -394,7 +394,7 @@ void bh_xevious_0(Obj *o) {
         set_velocity_from_angle(o);
         int n = *p++;
         if (n == 0xff) break;
-        if (wait_ticks(o, n * 2)) break;
+        if (wait_vbls(o, n * 2)) break;
     }
     stop(o);                                         /* LAB_0776 */
     wait_signal(o);
@@ -407,10 +407,10 @@ static const int16_t TINYTRUK_ANIM[] = { A_RATE(1), A_SETLOOP(0), 0x000b, 0x020b
 /* LAB_0781 @ $216C68 */
 static void tinytruk_fire_0781(Obj *o) {
     int d = g.difficulty182; if (d > 3) d = 3;
-    if (d & 1) { fire_homing(o, 0, -2, 0xc0); wait_ticks(o, 8); }
+    if (d & 1) { fire_homing(o, 0, -2, 0xc0); wait_vbls(o, 8); }
     if (d & 2) {
-        fire_homing(o, -4, 2, 0xa0); wait_ticks(o, 8);
-        fire_homing(o,  4, 2, 0xe0); wait_ticks(o, 8);
+        fire_homing(o, -4, 2, 0xa0); wait_vbls(o, 8);
+        fire_homing(o,  4, 2, 0xe0); wait_vbls(o, 8);
     }
 }
 void bh_tinytruk_0(Obj *o) {
@@ -419,11 +419,11 @@ void bh_tinytruk_0(Obj *o) {
     o->box.mask = 0x20;
     o->vy = (int32_t)0xffff4000;                     /* -0.75 px/VBL, up the screen */
     anim_start(o, TINYTRUK_ANIM);
-    wait_ticks(o, 100);                              /* result not checked */
+    wait_vbls(o, 100);                              /* result not checked */
     o->box.mask = 0x24;
     o->w[2] = 6;
     for (;;) {                                       /* LAB_077F */
-        if (wait_ticks(o, 20)) return;
+        if (wait_vbls(o, 20)) return;
         tinytruk_fire_0781(o);
         if (--o->w[2] == 0) break;
     }

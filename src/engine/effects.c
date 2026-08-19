@@ -68,14 +68,14 @@ static void bullet_script(Obj *o) {
     wait_signal(o);
 }
 static const int16_t FLASH_ANIM[] = { A_RATE(1), 0x0401, A_END_SIGNAL, A_END };
-static void flash_script(Obj *o) {
+void fx_flash(Obj *o) {   /* LAB_0619 muzzle flash */
     enemy_init(o, 7, 0x8000, -16, 0, 0, 1); o->z = 33 << 16; o->flags367 |= F_NO_SHADOW; o->margin = 0; stop(o);
     anim_start(o, FLASH_ANIM); set_frame(o, 0x0401); wait_signal(o);
 }
 void fire_homing(Obj *o, int dx, int dy, int angle) {
     Obj *b = eng_spawn(o, bullet_script, 100);
     if (b) { b->x += dx << 16; b->y += dy << 16; b->w[8] = (int16_t)angle; }
-    Obj *f = eng_spawn(o, flash_script, 100);
+    Obj *f = eng_spawn(o, fx_flash, 100);
     if (f) { f->x += dx << 16; f->y += dy << 16; }
 }
 extern const uint8_t swiv_fire_patterns[60];
@@ -104,6 +104,6 @@ static void missile_body(Obj *o) {
     }
     box_unlink(o); g.missile_budget206++;
 }
-void fire_missile_aimed(Obj *o) { if (g.missile_budget206 < 0) return; Obj *m = eng_spawn(o, missile_body, 100); if (m) { m->w[4] = 1; m->w[5] = 1; } eng_spawn(o, flash_script, 100); }
+void fire_missile_aimed(Obj *o) { if (g.missile_budget206 < 0) return; Obj *m = eng_spawn(o, missile_body, 100); if (m) { m->w[4] = 1; m->w[5] = 1; } eng_spawn(o, fx_flash, 100); }
 void fire_missile_ahead(Obj *o) { Obj *m = eng_spawn(o, missile_body, 100); if (m) { m->w[4] = 1; m->w[5] = 0; } }
 void fire_missile_fast(Obj *o)  { Obj *m = eng_spawn(o, missile_body, 100); if (m) { m->w[4] = 0; m->w[5] = 0; } }

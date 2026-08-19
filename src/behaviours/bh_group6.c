@@ -12,7 +12,6 @@
 #define SCRY(o) ((int16_t)(YI(o) - g.scroll3542))
 
 /* ---- globals not in the engine's Globals (file-static stand-ins) ---- */
-static int8_t  flag3615;          /* 3615(A6) (cleared by INST4#0) */
 static int8_t  flag3617;          /* 3617(A6): "INST4 platform destroyed" -- set by INST4#6, read by INST4#0/#3 */
 static uint8_t flag148;           /* 148(A6): INST4#3 one-shot bit */
 static int16_t fade142;           /* 142(A6): palette fade request (-1 = to white) */
@@ -75,9 +74,9 @@ void bh_inst2_0(Obj *o) {
     for (;;) {                                          /* LAB_07D6 */
         if (g.boss140) {
             o->w[0] = 5;
-            do { spawn(fx_flame); if (wait_ticks(o, 7)) return; } while (--o->w[0]);   /* LAB_07D7 */
+            do { spawn(fx_flame); if (wait_vbls(o, 7)) return; } while (--o->w[0]);   /* LAB_07D7 */
         }
-        if (wait_ticks(o, (g.boss140 << 7) + 1)) return;
+        if (wait_vbls(o, (g.boss140 << 7) + 1)) return;
     }
 }
 
@@ -104,8 +103,8 @@ static void inst3_fire(Obj *o, int dx, int dy) {
 }
 /* LAB_07DF(n) / LAB_07DE(1): n ticks of boss_tick on the absolute tick counter; returns signalled */
 static int inst3_wait(Obj *o, int n) {
-    int16_t t = (int16_t)(g.tick + n);
-    while ((int16_t)(g.tick - t) < 0) { if (boss_tick(o)) break; }
+    int16_t t = (int16_t)(g.vblcount + n);
+    while ((int16_t)(g.vblcount - t) < 0) { if (boss_tick(o)) break; }
     return eng_signalled(o);
 }
 /* LAB_07E5: sweep across the screen, alternating direction (w[4] toggles) */
@@ -163,7 +162,7 @@ static void inst3_drone(Obj *o) {
     enemy_init(o, 0x1831, 38, 16, 1, 50, 10);
     o->z = PX(3); o->flags367 |= F_NO_SHADOW;
     anim_start(o, INST3_DRONE_ANIM);
-    wait_ticks(o, 50);
+    wait_vbls(o, 50);
     o->speed = 0x200;
     int tx, ty; alternate_player(&tx, &ty); turn_towards(o, tx, ty, 0); set_velocity_from_angle(o);
     for (;;) {                                          /* LAB_07F4 */
@@ -176,7 +175,7 @@ void bh_inst3_12(Obj *o) {
     enemy_init(o, 0x1831, 0x8000, 32, 0, 0, 0);
     for (;;) {                                          /* LAB_07F1 */
         if (g.boss140) spawn(inst3_drone);
-        yield_n(o, (rng() & 0x7f) + 0x32);
+        yield_vbls(o, (rng() & 0x7f) + 0x32);
         offscreen_check(o);
         if (eng_signalled(o)) return;
     }
@@ -210,13 +209,13 @@ static void inst4_storm(Obj *o) {
     do {                                                /* LAB_07FD */
         uint32_t r = rng() & 0x7f;
         if (!(r < (uint8_t)n)) {
-            flash11166 = r & 0x47; yield_once(o); flash11166 = 0;
+            flash11166 = r & 0x47; yield_vbls(o, 1); flash11166 = 0;
             if (g.vbl_per_tick < 5) {
                 Obj *c = spawn(fx_wreck);
                 if (c) { uint32_t r2 = rng(); c->y = PX((int16_t)((r2 & 0x3f) + g.scroll3542 + 0x10)); c->x = PX(((r2 >> 16) & 0xff) + 0x20); }
             }
         }
-        yield_once(o);                                  /* LAB_07FE */
+        yield_vbls(o, 1);                               /* LAB_07FE */
     } while (--n);
 }
 void bh_inst4_0(Obj *o) {
@@ -226,12 +225,12 @@ void bh_inst4_0(Obj *o) {
     boss_enter();
     for (;;) {                                          /* LAB_07F9 */
         o->w[0] = 5;
-        do { spawn(fx_flame); if (wait_ticks(o, 7)) return; } while (--o->w[0]);   /* LAB_07FA */
-        if (wait_ticks(o, 50)) return;
+        do { spawn(fx_flame); if (wait_vbls(o, 7)) return; } while (--o->w[0]);   /* LAB_07FA */
+        if (wait_vbls(o, 50)) return;
         if (!flag3617) continue;
         inst4_storm(o);
         g.scroll3530 -= 0x13f;
-        flag3615 = 0;
+        g.flag3615 = 0;
         g.flags166 |= 2;                                /* level end */
         flash11166 = 0x100;
         return;                                         /* note: no boss_leave in the original */
@@ -256,14 +255,14 @@ void bh_inst4_3(Obj *o) {
     gfx_acquire(o, 6);
     enemy_init(o, 0x0632, 38, -48, 0, 0, 60);
     o->cb534 = NULL;
-    wait_ticks(o, 250);
+    wait_vbls(o, 250);
     for (;;) {                                          /* LAB_07FF */
         o->w[0] = 15;
         do { o->y -= PX(2); step(o); } while (--o->w[0]);          /* LAB_0800 rise (result unchecked) */
         flag148 = 0;
         if (!flag3617) {
             for (;;) {                                  /* LAB_0801 */
-                if (wait_ticks(o, 200)) goto out;
+                if (wait_vbls(o, 200)) goto out;
                 int was = flag148 & 1; flag148 |= 1;
                 if (!was) break;
             }
@@ -272,7 +271,7 @@ void bh_inst4_3(Obj *o) {
         do { o->y += PX(2); step(o); } while (--o->w[0]);          /* LAB_0803 sink */
         rng();                                          /* (rng()&1)*2 computed, unused */
         inst4_burst(o);
-        if (wait_ticks(o, 10)) break;
+        if (wait_vbls(o, 10)) break;
     }
 out:
     gfx_release(o, 6);                                  /* LAB_0804 */
@@ -287,11 +286,11 @@ static void inst5_eyes(Obj *o) {
     enemy_init(o, 0x0256, 0, 0, 0, 0, 0);
     o->cb534 = NULL;
     for (;;) {                                          /* LAB_0819 */
-        yield_n(o, (rng() & 0x7f) + 100);
+        yield_vbls(o, (rng() & 0x7f) + 100);
         for (;;) {                                      /* LAB_081A */
             int r = rng() & 7; if (r >= 6) break;
             set_frame(o, EYE_GFX[r]);
-            if (wait_ticks(o, 5)) return;
+            if (wait_vbls(o, 5)) return;
         }
     }
 }
@@ -301,10 +300,10 @@ static void inst5_mouth(Obj *o) {
     enemy_init(o, 0x0e56, 0, 0, 0, 0, 0);
     o->cb534 = NULL;
     for (;;) {                                          /* LAB_081D */
-        yield_n(o, (rng() & 7) + 3);
+        yield_vbls(o, (rng() & 7) + 3);
         int r = rng() & 7; if (r >= 5) continue;
         set_frame(o, MOUTH_GFX[r]);
-        if (step(o)) return;
+        if (wait_vbls(o, 1)) return;
     }
 }
 
@@ -380,7 +379,7 @@ static void spit_gunner(Obj *o) {
     enemy_init(o, 0x0057, 36, 0, 5, 70, 15);
     stop(o); o->z = 0; o->vy = 0x8000;
     anim_start(o, GUNNER_ANIM);
-    for (;;) { spawn(fx_flame); if (wait_ticks(o, (rng() & 0x7f) + 0x96)) return; }   /* LAB_082A */
+    for (;;) { spawn(fx_flame); if (wait_vbls(o, (rng() & 0x7f) + 0x96)) return; }   /* LAB_082A */
 }
 /* $21814c: hatched bird, weaves towards the nearest player */
 static const int16_t BIRD_ANIM[] = { A_RATE(2), 0x0857, 0x0a57, 0x0c57, 0x0a57, A_LOOP, A_END };
@@ -394,7 +393,7 @@ static void spit_bird(Obj *o) {
         o->angle += (rng() & 0x1f) - 15;
         o->angle &= 0x7f;                               /* BCLR #7,359: keep heading downwards */
         set_velocity_from_angle(o);
-        if (wait_ticks(o, 8)) break;
+        if (wait_vbls(o, 8)) break;
     }
     o->vx = 0; o->vy = PX(4);
     wait_signal(o);
@@ -434,14 +433,14 @@ static void inst5_spitter(Obj *o) {
             o->w[2] = (int16_t)((r >> 16) & 7);         /* creature kind (LAB_0825 index) */
             o->angle = 0x10; o->speed = 0x80; o->w[4] = 5;
             do {                                        /* LAB_0821 */
-                yield_n(o, 10);
+                yield_vbls(o, 10);
                 if (eng_signalled(o)) goto out;
                 inst5_spit_one(o); inst5_spit_one(o);
                 o->angle = (uint8_t)(((16 + o->w[5] + o->angle) & 0x1f) - 16);
                 o->speed += 0x48;
             } while (--o->w[4]);
         }
-        yield_n(o, 200);                                /* LAB_0822 */
+        yield_vbls(o, 200);                             /* LAB_0822 */
         if (eng_signalled(o)) break;
     }
 out:
@@ -461,14 +460,14 @@ static void spark_intro(Obj *o) {
     if ((uint16_t)SCRY(o) > 0x100) { eng_free(o); return; }
     o->cb534 = NULL; o->animA.flags |= 0x40;
     set_frame(o, 0x2256);
-    step(o); o->y -= PX(0x140); step(o);
+    wait_vbls(o, 1); o->y -= PX(0x140); wait_vbls(o, 1);
     eng_free(o);
 }
 /* LAB_0850: ring spark (gfx $1a56), one tick */
 static void spark_ring(Obj *o) {
     spark_place(o);
     o->cb534 = NULL; set_frame(o, 0x1a56);
-    step(o); eng_free(o);
+    wait_vbls(o, 1); eng_free(o);
 }
 /* LAB_084A / LAB_0849: a radial line of ring sparks (w[0] = 23 or 22 downto 1/0 step 2, w[1] = ring) */
 static void spark_line(Obj *o, int start, int ring) {
@@ -479,7 +478,7 @@ static void spark_ray(Obj *o, int d) { for (int r = 12; r >= 0; r--) { o->w[0] =
 /* LAB_084C */
 static void spark_random_ray(Obj *o) {
     int d; do { d = rng() & 0x1f; } while (d >= 24);
-    spark_ray(o, d); yield_n(o, 5);
+    spark_ray(o, d); yield_vbls(o, 5);
 }
 /* LAB_0840: the boss's spark/aura effect generator */
 static void inst5_sparks(Obj *o) {
@@ -490,21 +489,21 @@ static void inst5_sparks(Obj *o) {
         yield_once(o);
     }
     for (;;) {                                          /* LAB_0843 */
-        yield_n(o, (rng() & 0x7f) + 8);
+        yield_vbls(o, (rng() & 0x7f) + 8);
         if (eng_signalled(o)) { eng_free(o); return; }
-        for (int ring = 12; ring >= 0; ring--) { spark_line(o, 23, ring); yield_n(o, 5); }   /* LAB_0844 */
+        for (int ring = 12; ring >= 0; ring--) { spark_line(o, 23, ring); yield_vbls(o, 5); }   /* LAB_0844 */
         if ((rng() & 3) == 0) for (int n = 12; n; n--) spark_random_ray(o);                   /* LAB_0845 */
         rng();
         if ((rng() & 3) == 0) {                         /* LAB_0847 */
             int ring = (rng() & 7) + 1;
-            for (int n = 4; n; n--) { spark_line(o, 23, ring); yield_n(o, 5); spark_line(o, 22, ring); yield_n(o, 5); }
+            for (int n = 4; n; n--) { spark_line(o, 23, ring); yield_vbls(o, 5); spark_line(o, 22, ring); yield_vbls(o, 5); }
         }
     }
 }
 /* LAB_0811: final boss hit handler (runs inline in step; may yield) */
 static void inst5_hit(Obj *o) {
     sfx(SFX_HIT, XI(o));                                /* LAB_07B3 -> LAB_03D6 */
-    if (--o->hp > 0) { flash11166 = 0x40; yield_once(o); flash11166 = 0; return; }
+    if (--o->hp > 0) { flash11166 = 0x40; yield_vbls(o, 1); flash11166 = 0; return; }
     boss_clock12534++;                                  /* kill the boss group */
     smart_bomb(o);
     gfx_acquire(o, 6);
@@ -530,13 +529,13 @@ void bh_inst5_0(Obj *o) {
     enemy_init(o, 0x0000, 38, 0, 200, 20000, 0);
     o->cb534 = NULL;
     for (;;) {                                          /* LAB_080D: strobe until the level-end flag clears */
-        flash11166 = 0; fade11170 = 0x100; yield_once(o);
-        flash11166 = 0x100; fade11170 = 0; yield_once(o);
+        flash11166 = 0; fade11170 = 0x100; yield_vbls(o, 1);
+        flash11166 = 0x100; fade11170 = 0; yield_vbls(o, 1);
         if (eng_signalled(o)) goto out;
         if (!(g.flags166 & 2)) break;
     }
     on_event(o, EV_BULLET, inst5_hit);
-    while (g.flags166 & 2) yield_once(o);               /* LAB_080E */
+    while (g.flags166 & 2) yield_vbls(o, 1);            /* LAB_080E */
     spawn(inst5_eyes); spawn(inst5_mouth); spawn(inst5_spitter); spawn(inst5_sparks);
     o->box.hw = o->box.hh = 32;
     o->animA.flags |= 0x80;
@@ -563,7 +562,7 @@ static void goose_part_return(Obj *o) {
     if (o->parent) o->z = PX(ZI(o->parent) + o->w[6]);
     o->flags367 &= ~F_ATTACHED;
     set_velocity_from_angle(o);
-    wait_ticks(o, 0x4b);
+    wait_vbls(o, 0x4b);
     for (;;) {                                          /* LAB_087C */
         if (!o->parent) break;
         int tx = XI(o->parent) + o->w[4], ty = YI(o->parent) + o->w[5];
@@ -585,7 +584,7 @@ static void goose_part_return(Obj *o) {
 /* LAB_0868/0869/086A -> LAB_086C: wings / tail (attached parts that follow with a spring) */
 static void goose_part(Obj *o, int dx, int dy, uint16_t gfx) {
     o->vx = PX(dx); o->vy = PX(dy); o->w[0] = dx; o->w[1] = dy;
-    yield_n(o, rng() & 0x3f);
+    yield_vbls(o, rng() & 0x3f);
     o->cb538_disabled = 1;                              /* ST 538(A5) */
     enemy_init(o, gfx, 34, -32, 0, 0, 10);
     o->cb534 = NULL; o->cb542 = (Callback)eng_signal;

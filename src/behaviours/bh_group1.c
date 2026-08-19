@@ -3,7 +3,6 @@
  * BLACKJET#0, BOS#0, MAMA#0, TILT#0.  Ported literally from the listing; see re/PORTING_GUIDE.md. */
 #include "../engine/engine.h"
 
-#define PX(n) ((int32_t)((uint32_t)(int32_t)(n) << 16))
 
 /* ------------------------------------------------------------------------------------------
  * Local verbs not exported by engine.h
@@ -73,9 +72,9 @@ static void cont_skyeyea(Obj *o) {
         break;
     }
     o->cb538_disabled = 0;                        /* SF 538(A5) */
-    if (wait_ticks(o, 10)) return;
+    if (wait_vbls(o, 10)) return;
     do {                                          /* LAB_05A9: turn w[0] times */
-        if (wait_ticks(o, 4)) return;
+        if (wait_vbls(o, 4)) return;
         o->angle += (uint8_t)o->w[1];
         set_velocity_from_angle(o); skyeyea_frame(o);
     } while (--o->w[0] != 0);
@@ -114,9 +113,9 @@ static void cont_skyeyeb(Obj *o) {
         break;
     }
     o->cb538_disabled = 0;
-    if (wait_ticks(o, 10)) return;
+    if (wait_vbls(o, 10)) return;
     do {                                          /* LAB_05B1 */
-        if (wait_ticks(o, 4)) return;
+        if (wait_vbls(o, 4)) return;
         o->angle += (uint8_t)o->w[1];
         set_velocity_from_angle(o); set_frame_dir16(o, 0x000a);
     } while (--o->w[0] != 0);
@@ -146,7 +145,7 @@ static void cont_edge(Obj *o) {
         int d0 = ((int16_t)(o->x >> 16) <= 0xa0) ? 32 : -32;
         o->angle += (uint8_t)d0;
         set_velocity_from_angle(o); set_frame_dir8(o, 0x0008);
-        wait_ticks(o, 5);                          /* result NOT tested in the original */
+        wait_vbls(o, 5);                          /* result NOT tested in the original */
     }
     fire_missile_aimed(o);
     wait_signal(o);
@@ -171,7 +170,7 @@ static int bunny_turn(Obj *o) {                 /* LAB_05BA */
     o->angle += 0x10; o->speed += 0x80;
     set_velocity_from_angle(o); bunny_frame(o);
     fire_missile_aimed(o);
-    return wait_ticks(o, 8);
+    return wait_vbls(o, 8);
 }
 static void cont_bunny(Obj *o) {
     enemy_init(o, 0x004f, 34, -48, 1, 90, 10);
@@ -180,13 +179,13 @@ static void cont_bunny(Obj *o) {
     o->z = PX(0x20);
     o->speed = 0x280; o->angle = (uint8_t)(0x40 - (o->w[0] << 4));
     set_velocity_from_angle(o); bunny_frame(o);
-    if (wait_ticks(o, 70)) return;
+    if (wait_vbls(o, 70)) return;
     bunny_turn(o);                                /* results not tested in the original */
     bunny_turn(o);
     wait_signal(o);
 }
 void bh_bunny_2(Obj *o) {
-    /* SF 3616(A6): game flag cleared here -- no engine equivalent, not ported */
+    g.flag3616 = 0;                                /* SF 3616(A6) */
     o->w[0] = 0;
     formation(o, -48, 6, 3, 1, cont_bunny);
     cont_bunny(o);
@@ -213,12 +212,12 @@ void bh_xevious_5(Obj *o) {
 static const int16_t AIRPORT_ANIM[] = { A_RATE(3), A_SETLOOP(0), 0x1E3C, 0x1C3C, A_LOOP, A_END };
 static void airport_body(Obj *o, int margin) {    /* LAB_05BF */
     enemy_init(o, 0x1c3c, 34, margin, 2, 25, 3);
-    /* SF 3615(A6): game flag cleared -- no engine equivalent */
+    g.flag3615 = 0;                                /* SF 3615(A6) */
     o->animA.flags |= 1;
     o->z = PX(0x0c);
     o->x -= PX(0x28);
     o->vx = 0x00008000;
-    if (wait_ticks(o, 80)) return;
+    if (wait_vbls(o, 80)) return;
     anim_start(o, AIRPORT_ANIM);
     o->ax = (o->ax & (int32_t)0xffff0000) | 0x1000;   /* MOVE.W #$1000,346(A5): low word of ax */
     wait_signal(o);
@@ -240,7 +239,7 @@ void bh_mill_0(Obj *o) {
     wait_onscreen(o, 24);                          /* result not tested */
     o->flags367 |= F_SCREEN_LOCKED;
     for (;;) {                                     /* LAB_05C1 */
-        if (wait_ticks(o, 100)) return;
+        if (wait_vbls(o, 100)) return;
         uint32_t r = rng();
         o->angle = (uint8_t)(16 & (r >> 16));      /* AND.W 11172(A6): high word of the new RNG state */
         do {                                       /* LAB_05C2: 8 missiles, 32 apart */
@@ -266,7 +265,7 @@ void bh_dada_0(Obj *o) {
     o->ax = d0;
     o->flags367 |= F_SCREEN_LOCKED;
     for (;;) {                                     /* LAB_05C5 */
-        if (wait_ticks(o, 2 * (14 - g.difficulty182))) return;
+        if (wait_vbls(o, 2 * (14 - g.difficulty182))) return;
         dada_fire(o, -22);
         dada_fire(o, 22);
     }
@@ -310,7 +309,7 @@ static void bos_bay(Obj *o) {                    /* LAB_05CA */
     wait_onscreen(o, 0xc0);                        /* result not tested */
     anim_start(o, BOS_BAY_ANIM);
     for (;;) {                                     /* LAB_05CB */
-        if (wait_ticks(o, 20)) return;
+        if (wait_vbls(o, 20)) return;
         if ((int16_t)((o->y >> 16) - g.scroll3542) > 0x20) spawn(bos_bomb);
     }
 }
@@ -370,7 +369,7 @@ static void mama_kid(Obj *o) {                   /* LAB_05D1 */
         /* LAB_05D4 */
         o->angle += (uint8_t)o->w[1];
         set_velocity_from_angle(o);
-        if (wait_ticks(o, o->w[2])) return;
+        if (wait_vbls(o, o->w[2])) return;
         if (o->w[0] == 0) continue;                /* TST.B 276(A5) */
         break;
     }

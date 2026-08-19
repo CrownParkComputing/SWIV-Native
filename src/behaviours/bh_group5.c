@@ -13,7 +13,6 @@
 #define SCRY(o) ((int16_t)(YI(o) - g.scroll3542))      /* screen y */
 
 /* ---- globals not in the engine's Globals (file-static stand-ins) ---- */
-static int8_t  flag3615;        /* 3615(A6): set by FISH, cleared by INST4#0 (write-only here) */
 static int16_t fodder_count146; /* 146(A6): fodder wave counter (LAB_05EB/05EF) */
 
 /* ---- verbs missing from engine.h, implemented here ---- */
@@ -67,9 +66,9 @@ void bh__lava_20(Obj *o) {
         do {                                            /* LAB_0786 */
             o->angle += (rng() & 0x1f) + 0x80;
             spawn(lava_rock);
-            yield_n(o, 10 - o->w[0]);
+            yield_vbls(o, 10 - o->w[0]);
         } while (--o->w[0]);
-        yield_n(o, g.rng11172 & 127);
+        yield_vbls(o, g.rng11172 & 127);
         offscreen_check(o);
         if (eng_signalled(o)) return;
     }
@@ -82,17 +81,17 @@ static const int16_t ORB_GUN_ANIM[] = { A_RATE(8), 0x1e52, 0x2052, 0x2252, 0x245
 static void orb_gun(Obj *o) {
     o->x -= PX(4); o->y += PX(2);
     enemy_init(o, 0x0e52, 34, -32, 1, 70, 10);
-    yield_n(o, (o->w[0] + 1) << 6);
+    yield_vbls(o, (o->w[0] + 1) << 6);
     o->margin = -10;
     anim_start(o, ORB_GUN_ANIM);
-    wait_ticks(o, 50);                                  /* result not checked in the original */
+    wait_vbls(o, 50);                                   /* result not checked in the original */
     o->z = PX(0x20); o->speed = 0x80; o->angle = 0xc0;
     for (;;) {                                          /* LAB_078E */
         int tx, ty; nearest_player(&tx, &ty); turn_towards(o, tx, ty, 33);
         o->angle = (o->angle + 0x10) & 0xe0; set_velocity_from_angle(o);
         set_frame_dir8(o, 0x0e52);                      /* LAB_078F */
         o->speed += 0x40;
-        if (wait_ticks(o, 15)) break;
+        if (wait_vbls(o, 15)) break;
     }
     wait_signal(o);
 }
@@ -104,7 +103,7 @@ static void orb_child(Obj *o) {
     o->angle = (uint8_t)g.rng11172;
     spawn(orb_gun);
     o->z = PX(0x20); o->speed = 0x600; set_velocity_from_angle(o);
-    wait_ticks(o, 15);
+    wait_vbls(o, 15);
 }
 void bh_orb_0(Obj *o) {
     enemy_init(o, 0x0252, 0x8000, -16, 0, 0, 0);
@@ -115,7 +114,7 @@ void bh_orb_0(Obj *o) {
 
 /* ================================================================== FISH.LIN#0 @ $216ec8 */
 static void cont_fish(Obj *o) {
-    flag3615 = -1;                                      /* ST 3615(A6) */
+    g.flag3615 = -1;                                    /* ST 3615(A6) */
     enemy_init(o, 0x001e, 34, -48, 1, 40, 10);
     if (!threat_ok()) return;
     o->z = PX(rng() & 0x1f); o->az = -0x1000; o->vy = PX(2);
@@ -135,7 +134,7 @@ void bh__rigs_4(Obj *o) {
     wait_onscreen(o, 24);
     o->w[0] = 5;
     do {                                                /* LAB_0793 */
-        if (wait_ticks(o, 20)) return;
+        if (wait_vbls(o, 20)) return;
         o->angle = 0x40; fire_missile_fast(o);          /* LAB_069A */
     } while (--o->w[0]);
     wait_signal(o);
@@ -150,10 +149,10 @@ static void lakegun(Obj *o, uint16_t gfx, const int16_t *open, const int16_t *cl
     enemy_init(o, gfx, 36, 100, 4, 75, 10);
     o->popup374 = 5;
     anim_start(o, open);
-    if (wait_ticks(o, 50)) return;
+    if (wait_vbls(o, 50)) return;
     o->w[0] = 6;
     do {                                                /* LAB_0795 / LAB_0797 */
-        if (wait_ticks(o, 30)) return;
+        if (wait_vbls(o, 30)) return;
         fire_homing(o, dx, 0, ang);
     } while (--o->w[0]);
     anim_start(o, close);
@@ -181,7 +180,7 @@ static void sub_hatch(Obj *o) {
     enemy_init(o, 0x0029, 0, 0, 0, 0, 5);
     stop(o); o->flags367 |= F_NO_SHADOW | F_FLASH_WITH_PARENT | F_ATTACHED; o->vz = PX(1);
     anim_start(o, LAKESUB_HATCH);
-    if (wait_ticks(o, 26)) return;
+    if (wait_vbls(o, 26)) return;
     int tx, ty; nearest_player(&tx, &ty); turn_towards(o, tx, ty, 0);
     o->w[0] = 5;
     do { spawn(sub_torpedo); o->angle += 0x33; } while (--o->w[0]);   /* LAB_079A */
@@ -190,9 +189,9 @@ static void sub_hatch(Obj *o) {
 void bh_lakesub_0(Obj *o) {
     enemy_init(o, 0x0029, 36, 64, 6, 80, 17);
     anim_start(o, LAKESUB_SURFACE);
-    if (wait_ticks(o, 40)) return;
+    if (wait_vbls(o, 40)) return;
     spawn_attached(sub_hatch);                          /* LAB_04CA try-once */
-    if (wait_ticks(o, 70)) return;
+    if (wait_vbls(o, 70)) return;
     anim_start(o, LAKESUB_DIVE);
     wait_signal(o);
 }
@@ -218,7 +217,7 @@ static void hover_launcher(Obj *o) {
         o->angle = (uint8_t)d;
         fire_missile_ahead(o);                          /* LAB_069B */
         b += 0x10;
-        if (step(o)) return;
+        if (wait_vbls(o, 1)) return;                    /* LAB_04DD */
     }
 }
 void bh_hover_4(Obj *o) {
@@ -233,11 +232,11 @@ void bh_hover_4(Obj *o) {
     if (wait_onscreen(o, 100)) return;                  /* LAB_079F */
     anim_start(o, HOVER_ANIM);
     o->ay = -0x800;
-    if (wait_ticks(o, 23)) return;
+    if (wait_vbls(o, 23)) return;
     spawn(hover_launcher);
-    if (wait_ticks(o, 25)) return;
+    if (wait_vbls(o, 25)) return;
     o->ay = 0x1000;
-    if (wait_ticks(o, 50)) return;
+    if (wait_vbls(o, 50)) return;
     o->vx = 0; o->ay = 0;
     wait_signal(o);
 }
@@ -285,17 +284,17 @@ void bh_seaplane_0(Obj *o) {
 static void hangar_plane(Obj *o) {
     enemy_init(o, 0x061c, 4, -32, 7, 70, 8);
     o->z = 0;
-    wait_ticks(o, 70);
+    wait_vbls(o, 70);
     for (;;) {                                          /* LAB_07C1 */
         o->vy = 0x8000;
-        if (wait_ticks(o, (rng() & 0x3f) + 0x32)) return;
+        if (wait_vbls(o, (rng() & 0x3f) + 0x32)) return;
         if (g.boss140) {
             o->vy = 0;
-            if (wait_ticks(o, 10)) return;
+            if (wait_vbls(o, 10)) return;
             int tx, ty; alternate_player(&tx, &ty); turn_towards(o, tx, ty, 0);
             fire_homing(o, 0, -4, o->angle);
         }
-        if (wait_ticks(o, 30)) return;
+        if (wait_vbls(o, 30)) return;
     }
 }
 /* LAB_07BA: the door (attached child of the frame) -- slides up 27 px, releases a plane, slides back */
@@ -304,12 +303,12 @@ static void hangar_door(Obj *o) {
     enemy_init(o, o->w[0] == 1 ? 0x201c : 0x221c, 36, -48, 0, 0, 15);
     o->flags367 |= F_NO_SHADOW; o->z = PX(1);
     for (;;) {                                          /* LAB_07BC */
-        if (wait_ticks(o, (rng() & 0x3c) + 0x96)) return;
+        if (wait_vbls(o, (rng() & 0x3c) + 0x96)) return;
         if (g.boss140 == 0) continue;
         spawn(hangar_plane);
         o->w[0] = 0x1b;
         do { if (step(o)) return; o->y -= PX(1); } while (--o->w[0]);     /* LAB_07BD */
-        if (wait_ticks(o, 30)) return;
+        if (wait_vbls(o, 30)) return;
         o->w[0] = 0x1b;
         do { if (step(o)) return; o->y += PX(1); } while (--o->w[0]);     /* LAB_07BE */
     }
@@ -351,7 +350,7 @@ static int inst1_fire(Obj *o) {
     anim_start(o, INST1_FIRE_ANIM);
     sfx(SFX_SHOT, XI(o));                               /* LAB_040F */
     spawn_prio(inst1_shell, 100);                       /* LAB_04D2 prio 100 */
-    return wait_ticks(o, 40);
+    return wait_vbls(o, 40);
 }
 void bh_inst1_11(Obj *o) {
     gfx_acquire(o, 6);
@@ -362,7 +361,7 @@ void bh_inst1_11(Obj *o) {
     wait_onscreen_noevents(o, 84);
     boss_enter();
     for (;;) {                                          /* LAB_07C4 */
-        if (wait_ticks(o, 100)) break;
+        if (wait_vbls(o, 100)) break;
         o->w[0]--;
         if ((o->w[0] & 3) == 0) {
             Obj *c = spawn(eng_handler_for_gfx(0x0003));    /* LAB_06F5 = MEDTANK.LIN#0 */
@@ -420,7 +419,7 @@ static void fodder_wave(Obj *o) {
     int n = (4 - g.boss140) * 4;
     do {                                                /* LAB_05EC */
         spawn(fodder_body);
-        yield_n(o, 10);
+        yield_vbls(o, 10);
         if (eng_signalled(o)) break;
     } while (--n);
     fodder_body(o);
@@ -444,22 +443,22 @@ void bh_inst2_2(Obj *o) {
     o->death376 = fx_wreck;
     wait_onscreen(o, o->w[0] == 1 ? 83 : 57);
     boss_enter();
-    wait_ticks(o, 100);
+    wait_vbls(o, 100);
     for (;;) {                                          /* LAB_07D2 */
         spawn(fodder_wave);
         anim_start(o, INST2_OPEN);
-        if (wait_ticks(o, 20)) break;
+        if (wait_vbls(o, 20)) break;
         on_event(o, EV_BULLET, boss_hit);
-        if (wait_ticks(o, 50)) break;
+        if (wait_vbls(o, 50)) break;
         for (;;) {                                      /* LAB_07D3 */
             sfx(SFX_SHOT, XI(o));                       /* LAB_040F */
             spawn_prio(inst2_shell, 100);
-            if (wait_ticks(o, 20)) goto out;
+            if (wait_vbls(o, 20)) goto out;
             if ((int16_t)rng() < 0) break;
         }
         anim_start(o, INST2_CLOSE);
         off_event(o, EV_BULLET);
-        if (wait_ticks(o, ((4 - g.boss140) << 5) + 0x14)) break;
+        if (wait_vbls(o, ((4 - g.boss140) << 5) + 0x14)) break;
     }
 out:
     gfx_release(o, 6);                                  /* LAB_07D4 */
