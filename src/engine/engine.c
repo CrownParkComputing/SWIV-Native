@@ -406,7 +406,7 @@ void screen_shake(Obj *o) { g.scroll3530 -= 3; yield_once(o); g.scroll3530 += 3;
 void boss_enter(void) { g.boss140++; g.flags166 |= 8; }
 void boss_leave(Obj *o) { if (--g.boss140 == 0) { yield_n(o, 20); g.flags166 &= ~8; } }
 const char *sfx_event_names[SFX_COUNT] = { "heli-pickup", "big-explosion", "wreck-explosion", "enemy-explosion", "smart-bomb", "enemy-hit", "player-shot", "missile-launch", "bullet-plop", "jeep-jump", "cannon", "alarm", "flame-hiss", "extra-life",
-    "ricochet", "jet-whoosh", "bomb-whistle", "fireball-drop", "boss-hit", "death-warble", "turret-shot", "takeoff-drone", "enemy-destroyed", "token-pickup", "homing-bullet", "game-start" };
+    "ricochet", "jet-whoosh", "bomb-whistle", "fireball-drop", "boss-hit", "death-warble", "turret-shot", "takeoff-drone", "enemy-destroyed", "token-pickup", "homing-bullet", "game-start", "weapon-token" };
 #ifdef SWIV_NO_AUDIO
 void sfx(int id, int x) { (void)id; (void)x; }
 #endif

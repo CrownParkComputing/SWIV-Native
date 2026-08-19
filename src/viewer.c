@@ -533,11 +533,13 @@ int main(int argc, char **argv) {
             for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? GRAD[y] : (Color){0, 0, 0, 0};
             UpdateTexture(stex, simg);
             DrawTexturePro(stex, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + 8, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
-            snprintf(line, sizeof line, "_x213_a0shots %d  hits %d  %d%%_f", g.stat_shots, g.stat_hits, g.stat_shots ? g.stat_hits * 100 / g.stat_shots : 0);
+            /* per-player shots / hits / accuracy under each score */
+            { char l2[96]; snprintf(line, sizeof line, "_x008_a1shots %d  hits %d  %d%%_f", g.stat_shots_p[0], g.stat_hits_p[0], g.stat_shots_p[0] ? g.stat_hits_p[0] * 100 / g.stat_shots_p[0] : 0);
+              snprintf(l2, sizeof l2, "_x418_a2shots %d  hits %d  %d%%_f", g.stat_shots_p[1], g.stat_hits_p[1], g.stat_shots_p[1] ? g.stat_hits_p[1] * 100 / g.stat_shots_p[1] : 0); strncat(line, l2, sizeof line - strlen(line) - 1); }
             fe_text_strip(strip, SW, line);
             for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? (Color){200, 200, 200, 255} : (Color){0, 0, 0, 0};
             UpdateTexture(stex2, simg);
-            DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){WIN_W / 2 - SW, by + 40, SW * 2, 16}, (Vector2){0, 0}, 0, WHITE);
+            DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + 36, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
             if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
         }
         if (mode == 3) {
