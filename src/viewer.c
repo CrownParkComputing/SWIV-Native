@@ -22,7 +22,7 @@ extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 
 static SwivDisk disk;
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
-static int game_on = 0; static int game_paused = 0; static int eng_level = 0;
+static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 0;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title */
@@ -52,7 +52,7 @@ static int is_air_name(const char *n) {
     return 0;
 }
 extern int (*swiv_map_tile_filter)(uint16_t gfx);
-static int placeholder_tile(uint16_t gfx) { return eng_handler_ported(gfx) || (strcmp(eng_handler_name(gfx), "DEFAULT") != 0); }
+static int placeholder_tile(uint16_t gfx) { int r = eng_handler_ported(gfx) || (strcmp(eng_handler_name(gfx), "DEFAULT") != 0); if (r && getenv("SWIV_DBG")) fprintf(stderr, "skip tile %04x\n", gfx); return r; }
 static void load_level(int lv) {
     if (map_lv >= 0) { swiv_map_free(&map); swiv_canvas_free(&canvas); }
     swiv_map_load(&disk, lv, &map);
@@ -268,23 +268,42 @@ int main(int argc, char **argv) {
         DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, 0, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
         int by = VIEW_H * SCALE;
         DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
-        DrawText(status, 8, by + 4, 16, RAYWHITE);
+        int dev = debug_ui || (mode == 0 || mode == 1);      /* dev bar in map/sprite modes or when DEBUG is on */
+        if (dev) DrawText(status, 8, by + 4, 16, RAYWHITE);
         if (mode == 3 && (g.vbl / 25) % 2 == 0) { const char *t = "PRESS FIRE"; int fs = 40; DrawText(t, (WIN_W - MeasureText(t, fs)) / 2 + 2, VIEW_H * SCALE - 100 + 2, fs, BLACK); DrawText(t, (WIN_W - MeasureText(t, fs)) / 2, VIEW_H * SCALE - 100, fs, RAYWHITE); }
         if (mode == 3) g.vbl++;
         float r1 = by + 26, r2 = by + 72, bh = 40;
-        /* left: mode toggle */
-        if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
-        if (button((Rectangle){8, r2, 100, bh}, "SPRITES", mode == 1)) mode = 1;
-        if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_on = 0; } mode = 2; }
-        if (mode != 2 && button((Rectangle){WIN_W - 108, r2, 100, bh}, "TITLE", mode == 3)) mode = 3;
         if (mode == 2) {
-            for (int k = 0; k < 7; k++) {
-                char l[4]; snprintf(l, 4, "%d", k + 1);
-                if (button((Rectangle){120 + k * 52, r1, 48, bh}, l, eng_level == k)) { map_lv = k; eng_init(&disk, k); player_start(); eng_level = k; }
+            /* HUD over the top band of the playfield (the original's panel rows) */
+            DrawRectangle(0, 0, WIN_W, 36 * SCALE / 2, (Color){0, 0, 0, 160});
+            char h[128];
+            snprintf(h, sizeof h, "HELI %06d", g.heli.score); DrawText(h, 16, 10, 30, (Color){255, 238, 136, 255});
+            for (int i = 0; i < g.heli.lives68; i++) DrawRectangle(16 + i * 18, 44, 12, 6, (Color){255, 238, 136, 255});
+            snprintf(h, sizeof h, "HI %06d", g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score); DrawText(h, (WIN_W - MeasureText(h, 30)) / 2, 10, 30, RAYWHITE);
+            snprintf(h, sizeof h, "JEEP %06d", g.jeep.score); DrawText(h, WIN_W - 16 - MeasureText(h, 30), 10, 30, (Color){136, 221, 255, 255});
+            if (g.heli.lives68 <= 0 && !g.heli.alive) { const char *t = "GAME OVER"; DrawText(t, (WIN_W - MeasureText(t, 48)) / 2, VIEW_H * SCALE / 2, 48, RAYWHITE); }
+        }
+        if (mode != 3 && (dev || mode == 2)) {
+            if (dev) {
+                if (button((Rectangle){8, r1, 100, bh}, "MAP", mode == 0)) mode = 0;
+                if (button((Rectangle){8, r2, 100, bh}, "SPRITES", mode == 1)) mode = 1;
+                if (button((Rectangle){WIN_W - 108, mode == 2 ? r2 : r1, 100, bh}, "PLAY", mode == 2)) { if (mode == 2) { game_on = 0; } mode = 2; }
+                if (mode != 2 && button((Rectangle){WIN_W - 108, r2, 100, bh}, "TITLE", mode == 3)) mode = 3;
             }
-            if (button((Rectangle){500, r1, 90, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
-            if (button((Rectangle){600, r1, 110, bh}, "RESTART", 0)) { eng_init(&disk, eng_level); player_start(); }
-            DrawText("left half: drag to steer   right half: fire   (or arrows + space)", 120, r2 + 12, 16, LIGHTGRAY);
+        }
+        if (mode == 2) {
+            if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
+            if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
+            if (button((Rectangle){224, r1, 100, bh}, "QUIT", 0)) { mode = 3; game_on = 0; }
+            if (dev) {
+                for (int k = 0; k < 7; k++) {
+                    char l[4]; snprintf(l, 4, "%d", k + 1);
+                    if (button((Rectangle){120 + k * 52, r2, 48, bh}, l, eng_level == k)) { map_lv = k; eng_init(&disk, k); player_start(); eng_level = k; }
+                }
+                if (button((Rectangle){500, r2, 110, bh}, "RESTART", 0)) { eng_init(&disk, eng_level); player_start(); }
+                if (button((Rectangle){620, r2, 100, bh}, "MAP", 0)) mode = 0;
+                if (button((Rectangle){730, r2, 100, bh}, "SPRITES", 0)) mode = 1;
+            } else DrawText("drag left half to steer, right half fires  (or arrows + space)", 340, r1 + 12, 16, LIGHTGRAY);
         } else if (mode == 0) {
             for (int k = 0; k < 7; k++) {
                 char l[4]; snprintf(l, 4, "%d", k + 1);

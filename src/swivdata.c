@@ -157,6 +157,7 @@ void swiv_canvas_init(SwivCanvas *c, int w, int h, uint8_t fill) {
 void swiv_canvas_free(SwivCanvas *c) { free(c->px); free(c->palid); c->px = c->palid = NULL; }
 
 void swiv_blit_part(SwivCanvas *c, const SwivPart *p, int x0, int y0) {
+    if (p->flags & 16) return;      /* part flag bit4 = collision-only marker (_STOP, jeep stop markers): never drawn */
     int wd = (p->w + 15) / 16;
     if (p->dsz < (uint32_t)(wd * 8 * p->h)) return;
     for (int y = 0; y < p->h; y++) {
