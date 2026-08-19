@@ -6,7 +6,7 @@
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: dumpmap LEVEL OUT.ppm [--objects] [--bake] [--adf PATH]\n"); return 2; }
     const char *adf = "/home/jon/swiv-amiga-re/SWIVFIX.ADF"; int objs = 0, bake = 0;
-    for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "--objects")) objs = 1; else if (!strcmp(argv[i], "--bake")) bake = 1; else if (!strcmp(argv[i], "--adf")) adf = argv[++i]; }
+    for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "--objects")) objs = 1; else if (!strcmp(argv[i], "--bake")) { bake = 1; swiv_draw_hidden_markers = 1; } else if (!strcmp(argv[i], "--adf")) adf = argv[++i]; }
     SwivDisk d; if (swiv_open(&d, adf)) { fprintf(stderr, "cannot open %s\n", adf); return 1; }
     SwivMap m; if (swiv_map_load(&d, atoi(argv[1]), &m)) { fprintf(stderr, "bad level\n"); return 1; }
     SwivCanvas c; swiv_map_render(&d, &m, &c, objs);

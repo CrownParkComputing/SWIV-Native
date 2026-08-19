@@ -73,6 +73,7 @@ int  swiv_map_palid_at(const SwivMap *m, int ry);                      /* checkp
 typedef struct { int w, h; uint8_t *px; uint8_t *palid; int cur_palid; } SwivCanvas; /* palid: checkpoint index the pixel was drawn under (255 = background/row) */
 void swiv_canvas_init(SwivCanvas *c, int w, int h, uint8_t fill);
 void swiv_canvas_free(SwivCanvas *c);
+extern int swiv_draw_hidden_markers;   /* 1 = also draw flag-16 collision-only frames (reference parity) */
 void swiv_blit_part(SwivCanvas *c, const SwivPart *p, int x0, int y0);
 void swiv_blit_gfx(SwivDisk *d, SwivCanvas *c, int gfx, int x, int y);     /* anchored at (x,y) */
 void swiv_blit_gfx_shadow(SwivDisk *d, SwivCanvas *c, int gfx, int x, int y, uint8_t colour);  /* silhouette */
