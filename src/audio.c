@@ -31,8 +31,18 @@ static Sound finish(void) {
     Wave w = { .frameCount = mixn, .sampleRate = OUT, .sampleSize = 16, .channels = 1, .data = mixbuf };
     Sound s = LoadSoundFromWave(w); free(mixbuf); mixbuf = NULL; mixn = 0; return s;
 }
-static const int8_t WAVE_SHOT[8] = { 0x00, 0x10, 0x20, 0x40, 0x7f, 0x40, 0x20, 0x10 };   /* LAB_03E3 */
-static const int8_t WAVE_HIT[8]  = { 0x00, 0x20, 0x40, 0x60, 0x7f, 0x60, 0x40, 0x20 };   /* LAB_03EC */
+static const int8_t WAVE_SHOT[16] = { 0x00,0x10,0x20,0x40,0x7f,0x40,0x20,0x10, 0x00,(int8_t)0xc0,(int8_t)0xa0,(int8_t)0x90,(int8_t)0x81,(int8_t)0x90,(int8_t)0xa0,(int8_t)0xc0 };   /* LAB_03E3 */
+static const int8_t WAVE_HIT[16]  = { 0x00,0x20,0x40,0x60,0x7f,0x60,0x40,0x20, 0x00,(int8_t)0xe0,(int8_t)0xc0,(int8_t)0xa0,(int8_t)0x80,(int8_t)0xa0,(int8_t)0xc0,(int8_t)0xe0 };   /* LAB_03EC */
+/* LAB_03E4/03E6 style voice: each VBL volume = frames remaining, period += period>>4 (pitch falls) */
+static void voice_sweep(const int8_t *wave, int len, int period, int frames) {
+    int total = frames * OUT / 50; if (total > mixn) { mixbuf = realloc(mixbuf, total * 2); memset(mixbuf + mixn, 0, (total - mixn) * 2); mixn = total; }
+    double pos = 0; int per = period;
+    for (int fr = 0; fr < frames; fr++) {
+        int vol = frames - fr; double step = (PAULA / per) / OUT;
+        for (int i = fr * OUT / 50; i < (fr + 1) * OUT / 50; i++) { mixbuf[i] += (int16_t)(wave[(int)pos % len] * vol); pos += step; if (pos >= len) pos -= len; }
+        per += per >> 4;
+    }
+}
 static int8_t *noise8; 
 void audio_init(SwivDisk *d) {
     InitAudioDevice(); if (!IsAudioDeviceReady()) return;
@@ -46,11 +56,11 @@ void audio_init(SwivDisk *d) {
         snd[SFX_BIGEXPL] = finish();                                                             /* LAB_03C1 four-voice chord */
     }
     if (smart) { voice(smart, smartn, 0, 0x410, 64, 80, 0); voice(smart, smartn, 0, 0x401, 64, 80, 0); voice(smart, smartn, 0, 0x3f2, 64, 80, 0); voice(smart, smartn, 0, 0x3e4, 64, 80, 0); snd[SFX_BOMB] = finish(); }
-    voice(WAVE_SHOT, 8, 1, 0x3e8, 32, 20, 0); snd[SFX_SHOT] = finish();                        /* LAB_03E2: vol 32, 20 frames, period 1000 */
-    voice(WAVE_HIT, 8, 1, 0xc8, 64, 20, 0); snd[SFX_HIT] = finish();                           /* LAB_03EB: vol 64, 20 frames, period 200 */
+    voice_sweep(WAVE_SHOT, 16, 0x3e8, 32); snd[SFX_SHOT] = finish();                          /* LAB_03E2: 32 frames, period 1000 rising */
+    voice_sweep(WAVE_HIT, 16, 0xc8, 64); snd[SFX_HIT] = finish();                             /* LAB_03EB: 64 frames, period 200 rising */
     noise8 = malloc(256); uint32_t r = 1; for (int k = 0; k < 256; k++) { r = r * 1103515245u + 12345u; noise8[k] = (int8_t)(r >> 24); }
     voice(noise8, 256, 1, 0x60, 64, 50, 0); snd[SFX_MISSILE] = finish();                       /* LAB_040C approx (period $60, 50 frames) */
-    voice(WAVE_SHOT, 8, 1, 0x200, 40, 10, 0); voice(WAVE_SHOT, 8, 1, 0x100, 40, 10, 10); snd[SFX_PICKUP] = finish();   /* LAB_03F3 two-tone approx */
+    voice(WAVE_SHOT, 16, 1, 0x200, 40, 10, 0); voice(WAVE_SHOT, 16, 1, 0x100, 40, 10, 10); snd[SFX_PICKUP] = finish();   /* LAB_03F3 two-tone approx */
     ready = 1;
     xc = xmp_create_context();
     SetAudioStreamBufferSizeDefault(1024); mstream = LoadAudioStream(44100, 16, 2);
