@@ -390,10 +390,10 @@ int main(int argc, char **argv) {
             for (int i = 0; i < render_count; i++) rl[n++] = render_list[i];
             for (int i = 0; i < player_bullet_count; i++) rl[n++] = player_bullet_render[i];
             for (int i = 1; i < n; i++) { RenderEntry e = rl[i]; int j = i - 1; while (j >= 0 && rl[j].key < e.key) { rl[j + 1] = rl[j]; j--; } rl[j + 1] = e; }
-            for (int i = 0; i < n; i++) { if (rl[i].flags & 0x80) continue; if (rl[i].flags & 0x20) swiv_blit_gfx_shadow(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y, 0); else swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y); }
+            for (int i = 0; i < n; i++) { if ((rl[i].flags & 0x80) || (rl[i].gfx & 0x1ff) == 1) continue; /* BULLET.LIN set = hardware sprites */ if (rl[i].flags & 0x20) swiv_blit_gfx_shadow(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y, 0); else swiv_blit_gfx(&disk, &c, rl[i].gfx, rl[i].x, rl[i].y); }
             /* hardware-sprite entries (player shots): own palette, drawn after the playfield */
             static uint8_t spr[VIEW_W * VIEW_H]; int have_spr = 0;
-            for (int i = 0; i < n; i++) if (rl[i].flags & 0x80) {
+            for (int i = 0; i < n; i++) if ((rl[i].flags & 0x80) || ((rl[i].gfx & 0x1ff) == 1 && !(rl[i].flags & 0x20))) {
                 if (!have_spr) { memset(spr, 255, sizeof spr); have_spr = 1; }
                 SwivCanvas sc = { VIEW_W, VIEW_H, spr, NULL, 0 };
                 swiv_blit_gfx(&disk, &sc, rl[i].gfx, rl[i].x, rl[i].y);
