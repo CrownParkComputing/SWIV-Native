@@ -29,6 +29,11 @@ extern RenderEntry player_bullet_render[30]; extern int player_bullet_count;
 
 static SwivDisk disk;
 static Font ui_font; static int ui_font_ok; static Texture2D rr_logo;
+/* fullscreen: everything renders into a WIN_W x WIN_H canvas that is drawn scaled + centred; input is mapped back */
+static RenderTexture2D canvas_rt; static float view_scale = 1.0f, view_ox = 0, view_oy = 0;
+static Vector2 to_canvas(Vector2 p) { return (Vector2){ (p.x - view_ox) / view_scale, (p.y - view_oy) / view_scale }; }
+static Vector2 mpos(void) { return to_canvas(GetMousePosition()); }
+static Vector2 tpos(int i) { return to_canvas(GetTouchPosition(i)); }
 static void ui_text(const char *t, int x, int y, int fs, Color c) { if (ui_font_ok) DrawTextEx(ui_font, t, (Vector2){(float)x, (float)y}, (float)fs, 1, c); else DrawText(t, x, y, fs, c); }
 static int ui_measure(const char *t, int fs) { return ui_font_ok ? (int)MeasureTextEx(ui_font, t, (float)fs, 1).x : MeasureText(t, fs); }
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
@@ -38,7 +43,7 @@ static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras, 6 options */
 /* ---- options (options.txt) ---- */
 static struct { int sfx_vol, music_vol, fullscreen, scanlines, difficulty, ingame_music; } opt = { 8, 6, 0, 0, 1, 0 };   /* difficulty 0 easy 1 normal 2 hard */
-static void options_apply(void) { audio_set_volumes(opt.sfx_vol / 10.0f, opt.music_vol / 10.0f); if (opt.fullscreen != IsWindowFullscreen()) ToggleFullscreen(); eng_difficulty_mode = opt.difficulty; }
+static void options_apply(void) { audio_set_volumes(opt.sfx_vol / 10.0f, opt.music_vol / 10.0f); if (opt.fullscreen != IsWindowFullscreen()) { if (opt.fullscreen) { int m = GetCurrentMonitor(); SetWindowSize(GetMonitorWidth(m), GetMonitorHeight(m)); } ToggleFullscreen(); if (!opt.fullscreen) SetWindowSize(WIN_W, WIN_H); } eng_difficulty_mode = opt.difficulty; }
 static void options_save(void) { FILE *f = fopen("options.txt", "w"); if (f) { fprintf(f, "sfx %d\nmusic %d\nfullscreen %d\nscanlines %d\ndifficulty %d\ningame_music %d\n", opt.sfx_vol, opt.music_vol, opt.fullscreen, opt.scanlines, opt.difficulty, opt.ingame_music); fclose(f); } }
 static void options_load(void) { FILE *f = fopen("options.txt", "r"); char k[32]; int v; if (!f) return; while (fscanf(f, "%31s %d", k, &v) == 2) { if (!strcmp(k, "sfx")) opt.sfx_vol = v; else if (!strcmp(k, "music")) opt.music_vol = v; else if (!strcmp(k, "fullscreen")) opt.fullscreen = v; else if (!strcmp(k, "scanlines")) opt.scanlines = v; else if (!strcmp(k, "difficulty")) opt.difficulty = v; else if (!strcmp(k, "ingame_music")) opt.ingame_music = v; } fclose(f); }
 /* front end (src/frontend.c): the title/attract/level-start/game-over sequence owns mode 3 and drives the
@@ -63,8 +68,8 @@ static int fire_held_jeep(void) { return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(
 
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
-    Vector2 p = GetMousePosition();
-    if (GetTouchPointCount() > 0) p = GetTouchPosition(0);
+    Vector2 p = mpos();
+    if (GetTouchPointCount() > 0) p = tpos(0);
     return CheckCollisionPointRec(p, r);
 }
 static int button(Rectangle r, const char *label, int active) {
@@ -254,6 +259,7 @@ int main(int argc, char **argv) {
     fe_init(&disk); fe_start_title();
     SetTargetFPS(50);
     img = GenImageColor(VIEW_W, VIEW_H, BLACK); tex = LoadTextureFromImage(img);
+    canvas_rt = LoadRenderTexture(WIN_W, WIN_H); SetTextureFilter(canvas_rt.texture, TEXTURE_FILTER_BILINEAR);
     Color *buf = malloc(sizeof(Color) * VIEW_W * VIEW_H);
     load_level(0); scroll_pos = shot_scroll; sp_file = next_lin(0, 1);
     if (shot_file) { int f = swiv_find(&disk, shot_file); if (f >= 0) sp_file = f; }
@@ -274,7 +280,7 @@ int main(int argc, char **argv) {
             /* FRONT END: LAB_00B2 attract loop in src/frontend.c.  Port 2 = helicopter (arrows/space/pad 0/tap right),
              * port 1 = jeep (WASD/shift/pad 1/tap left); either fire starts, the other can join any time. */
             int start_heli = fire_held_heli() || autofire, start_jeep = fire_held_jeep();
-            Vector2 mp = GetMousePosition(); if (GetTouchPointCount() > 0) mp = GetTouchPosition(0);
+            Vector2 mp = mpos(); if (GetTouchPointCount() > 0) mp = tpos(0);
             if ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
             fe_keys();
             int r = fe_update(start_heli, start_jeep ? 0x40 : 0);
@@ -309,7 +315,7 @@ int main(int argc, char **argv) {
             static Vector2 stick0; static int stick_on = 0;
             int tc = GetTouchPointCount();
             for (int t = 0; t < (tc ? tc : (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? 1 : 0)); t++) {
-                Vector2 p = tc ? GetTouchPosition(t) : GetMousePosition();
+                Vector2 p = tc ? tpos(t) : mpos();
                 if (p.y >= VIEW_H * SCALE) continue;
                 if (p.x < WIN_W / 2) {
                     if (!stick_on) { stick0 = p; stick_on = 1; }
@@ -425,7 +431,10 @@ int main(int argc, char **argv) {
                      p ? p->trans : 0, L->nframes ? L->frames[sp_frame].nparts : 0, palname);
         }
         UpdateTexture(tex, buf);
+        { int sw = GetScreenWidth(), sh = GetScreenHeight(); float sx = (float)sw / WIN_W, sy = (float)sh / WIN_H; view_scale = sx < sy ? sx : sy; if (!IsWindowFullscreen() && sw == WIN_W && sh == WIN_H) view_scale = 1.0f; view_ox = (sw - WIN_W * view_scale) / 2; view_oy = (sh - WIN_H * view_scale) / 2; }
         BeginDrawing();
+        ClearBackground(BLACK);
+        BeginTextureMode(canvas_rt);
         ClearBackground(BLACK);
         DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, 0, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
         int by = VIEW_H * SCALE;
@@ -613,7 +622,7 @@ int main(int argc, char **argv) {
             Rectangle pb = {800, r2, 150, bh};
             DrawRectangleRec(pb, (Color){50, 50, 58, 255});
             DrawRectangle(pb.x, pb.y + pb.height * (1 - scroll_pos / (map.height ? map.height : 1)), pb.width, 3, SKYBLUE);
-            if (held(pb)) { Vector2 p = GetMousePosition(); scroll_pos = (1 - (p.y - pb.y) / pb.height) * map.height; }
+            if (held(pb)) { Vector2 p = mpos(); scroll_pos = (1 - (p.y - pb.y) / pb.height) * map.height; }
         } else if (mode == 1) {
             if (button((Rectangle){120, r1, 90, bh}, "< FILE", 0)) { sp_file = next_lin(sp_file, -1); sp_frame = 0; }
             if (button((Rectangle){216, r1, 90, bh}, "FILE >", 0)) { sp_file = next_lin(sp_file, 1); sp_frame = 0; }
@@ -623,6 +632,8 @@ int main(int argc, char **argv) {
             if (button((Rectangle){540, r1, 90, bh}, "ANIM", sp_anim)) sp_anim ^= 1;
             if (button((Rectangle){640, r1, 70, bh}, sp_zoom == 1 ? "x1" : sp_zoom == 2 ? "x2" : "x4", 0)) sp_zoom = sp_zoom == 4 ? 1 : sp_zoom * 2;
         }
+        EndTextureMode();
+        DrawTexturePro(canvas_rt.texture, (Rectangle){0, 0, WIN_W, -WIN_H}, (Rectangle){view_ox, view_oy, WIN_W * view_scale, WIN_H * view_scale}, (Vector2){0, 0}, 0, WHITE);
         EndDrawing();
         if (shot && --shot_frames == 0) { TakeScreenshot(shot); break; }
     }
