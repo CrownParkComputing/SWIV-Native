@@ -10,7 +10,7 @@
 #include <string.h>
 
 static Sound snd[8]; static int ready;
-static xmp_context xc; static AudioStream mstream; static int music_on; static int16_t mbuf[4096];
+static xmp_context xc; static AudioStream mstream; static int music_on; static int16_t mbuf[2048];   /* 1024 stereo frames = the stream buffer size */
 
 /* Paula emulation for the original's sound routines (LAB_03C1.. in AMPROG): a voice plays
  * 8-bit signed data at rate 3546895/period with a volume envelope over n VBLs. */
@@ -53,7 +53,7 @@ void audio_init(SwivDisk *d) {
     voice(WAVE_SHOT, 8, 1, 0x200, 40, 10, 0); voice(WAVE_SHOT, 8, 1, 0x100, 40, 10, 10); snd[SFX_PICKUP] = finish();   /* LAB_03F3 two-tone approx */
     ready = 1;
     xc = xmp_create_context();
-    mstream = LoadAudioStream(44100, 16, 2);
+    SetAudioStreamBufferSizeDefault(1024); mstream = LoadAudioStream(44100, 16, 2);
 }
 /* MOD music via libxmp: name = "AMTITUNE.MOD" (title) / "AMHITUNE.MOD" (hi-score) / NULL = stop */
 static SwivDisk *mdisk; static char mcur[32];
@@ -64,13 +64,13 @@ void audio_music_play(SwivDisk *d, const char *name) {
     audio_music_play(d, NULL);
     uint32_t n; int i = swiv_find(d, name); const uint8_t *p;
     if (i < 0 || !(p = swiv_load(d, i, &n))) return;
-    if (xmp_load_module_from_memory(xc, (void *)p, n) != 0) return;
+    int rc = xmp_load_module_from_memory(xc, (void *)p, n); fprintf(stderr, "music: %s load=%d\n", name, rc); if (rc != 0) return;
     xmp_start_player(xc, 44100, 0); xmp_set_player(xc, XMP_PLAYER_AMP, 1); xmp_set_player(xc, XMP_PLAYER_MIX, 70);
     PlayAudioStream(mstream); music_on = 1; snprintf(mcur, sizeof mcur, "%s", name); mdisk = d;
 }
 void audio_update(void) {
     if (!music_on) return;
-    while (IsAudioStreamProcessed(mstream)) { xmp_play_buffer(xc, mbuf, sizeof mbuf, 0); UpdateAudioStream(mstream, mbuf, sizeof mbuf / 4); }
+    while (IsAudioStreamProcessed(mstream)) { xmp_play_buffer(xc, mbuf, sizeof mbuf, 0); UpdateAudioStream(mstream, mbuf, 1024); }
 }
 void sfx(int id, int x) {
     if (!ready || id < 0 || id >= 8 || snd[id].frameCount == 0) return;
