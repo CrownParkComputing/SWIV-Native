@@ -37,5 +37,11 @@ int  fe_control_method(int player);            /* 0 = heli, 1 = jeep -> 0 joysti
 void fe_request_options(void);                   /* open the options screen from the attract loop (same as the HELP key) */
 void fe_text_strip(uint8_t *dst, int w, const char *text);
 void fe_status_line(char *dst, size_t n, int player, const FeHud *h);   /* the LAB_0593/LAB_0599 text for one player ("HELI 3[ 2* 0123450" / "PRESS FIRE" / "GET READY!") */   /* render a line of game-font text (with _x/_a escapes, 320-wide coords) into a w x 7 0/1 strip */
+/* hi-score name entry has an on-screen letter grid so a joypad-only player can type a name. */
+enum { FE_INPUT_ADD = 0, FE_INPUT_DEL = 1, FE_INPUT_OK = 2 };
+int  fe_hiscore_active(void);                                          /* 1 while the cursor blink loop in screen_hiscore_entry() is running */
+void fe_hiscore_letter_grid(int *x, int *y, int *cell_w, int *cell_h); /* grid origin/size in 320x256 canvas coords */
+int  fe_hiscore_letter_at(int col, int row);                            /* 'A'..'Z' or negative sentinel: -FE_INPUT_DEL, -FE_INPUT_OK */
+void fe_hiscore_input(int action, int ch);                             /* action = FE_INPUT_ADD/DEL/OK; ch is the ASCII letter for FE_INPUT_ADD, ignored otherwise */
 void fe_debug_goto(const char *screen);          /* start the sequence at a given screen: title, publisher, helibp, hiscore, jeepbp, credits, controls, stats, entry, ending */
 #endif

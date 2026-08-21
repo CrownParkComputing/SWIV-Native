@@ -38,7 +38,7 @@ static Vector2 tpos(int i) { return to_canvas(GetTouchPosition(i)); }
 static void ui_text(const char *t, int x, int y, int fs, Color c) { if (ui_font_ok) DrawTextEx(ui_font, t, (Vector2){(float)x, (float)y}, (float)fs, 1, c); else DrawText(t, x, y, fs, c); }
 static int ui_measure(const char *t, int fs) { return ui_font_ok ? (int)MeasureTextEx(ui_font, t, (float)fs, 1).x : MeasureText(t, fs); }
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
-static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0; static int pending_join_heli = 1, pending_join_jeep = 0;
+static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0; static int debug_go_panel = 0; static int pending_join_heli = 1, pending_join_jeep = 0;
 static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras, 6 options */
@@ -51,13 +51,10 @@ static void options_load(void) { FILE *f = fopen("options.txt", "r"); char k[32]
  * engine through FE_START_GAME / FE_LEVEL_INTRO / FE_PLAY; fe_game = the current game was started by it */
 static int fe_game = 0, fe_state = FE_ATTRACT, idle_vbl = 0, prev_joined_h = 0, prev_joined_j = 0, fe_req_sent = 0, level_base_px = 0;
 typedef struct { int score, lives68, power102, level100, rate98, hiscore80, joined; } Carry; static Carry carry[2];
-static void fe_keys(void) {      /* keyboard -> frontend (hi-score name entry, F-keys for the options screen, Esc) */
+static void fe_keys(void) {      /* ASCII typing fallback for hi-score name entry only.
+                                   * All UI shortcuts (ESC, F1..F10, F11, Enter, Backspace) are gone: the
+                                   * device build is joypad-only, with vptr cursor + A button + SELECT/START. */
     int c; while ((c = GetCharPressed()) > 0) if (c < 0x80) fe_key(c);
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) fe_key(FE_KEY_RETURN);
-    if (IsKeyPressed(KEY_BACKSPACE)) fe_key(FE_KEY_BACKSPACE);
-    if (IsKeyPressed(KEY_ESCAPE)) fe_key(FE_KEY_ESC);
-    for (int k = 0; k < 10; k++) if (IsKeyPressed(KEY_F1 + k) && k != 1) fe_key(FE_KEY_F1 + k);   /* F2 = screenshot */
-    if (IsKeyPressed(KEY_F11)) fe_key(FE_KEY_HELP);
 }
 static FeHud hud_of(const struct Player *p, int intro) {
     FeHud h = { -p->lives68 / 4, p->power102, p->score, FE_HUD_IDLE };
@@ -68,38 +65,88 @@ static int fire_held_heli(void) { return IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_E
 static int fire_held_jeep(void) { return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_LEFT_CONTROL) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonDown(1, GAMEPAD_BUTTON_MIDDLE_RIGHT); }
 
 /* ---- controller cursor: a virtual pointer driven by the first real gamepad (d-pad / left stick), A = click ---- */
+/* the vptr is kept as a no-op fallback so ui_hit() / ui_pressed() still compile, but focus-based
+ * navigation (focused_button + D-pad) is what actually moves between buttons. */
 static Vector2 vptr = { 640, 500 }; static int vptr_on, vclick, vdown, vptr_pad = -1;
+static int a_pressed;                                  /* GAMEPAD_BUTTON_RIGHT_FACE_DOWN, latched at frame start */
+
+/* ---- focus-based button navigation ---- */
+#define MAX_BUTTONS 96
+static Rectangle button_rects[MAX_BUTTONS];
+static int button_count = 0;                           /* reset at the start of every frame, populated as button() is called */
+static int focused_button = 0;                         /* index into the buttons rendered this frame */
+
+/* ---- DEBUG -> GO panel: jump to the game's own debug screens via fe_debug_goto().  Same list as the dev bar. ---- */
+static const struct { const char *label; const char *screen; } GO_LIST[] = {
+    { "title",         "title"    }, { "publisher",    "publisher" },
+    { "helicopter bp", "helibp"   }, { "jeep bp",      "jeepbp"    },
+    { "hiscore",       "hiscore"  }, { "credits",      "credits"   },
+    { "controls",      "controls" }, { "stats",        "stats"     },
+    { "hiscore entry", "entry"    }, { "ending",       "ending"    },
+};
+#define N_GO (int)(sizeof GO_LIST / sizeof GO_LIST[0])
 static int real_pad(int nth);
 static void vptr_update(int menus_active) {
-    vclick = 0; vdown = 0;
-    int p = real_pad(0); vptr_pad = p;
-    if (p < 0 || !menus_active) { vptr_on = 0; return; }
-    float ax = GetGamepadAxisMovement(p, GAMEPAD_AXIS_LEFT_X), ay = GetGamepadAxisMovement(p, GAMEPAD_AXIS_LEFT_Y);
-    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) ax = -1; if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) ax = 1;
-    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_UP)) ay = -1; if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) ay = 1;
-    if (fabsf(ax) > 0.25f || fabsf(ay) > 0.25f) { vptr.x += ax * 14; vptr.y += ay * 14; vptr_on = 1; }
-    if (vptr.x < 0) vptr.x = 0; if (vptr.x > WIN_W - 1) vptr.x = WIN_W - 1; if (vptr.y < 0) vptr.y = 0; if (vptr.y > WIN_H - 1) vptr.y = WIN_H - 1;
-    if (IsGamepadButtonPressed(p, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { vclick = 1; vptr_on = 1; }
-    if (IsGamepadButtonDown(p, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) vdown = 1;
-    if (GetMouseDelta().x != 0 || GetMouseDelta().y != 0 || GetTouchPointCount() > 0) vptr_on = 0;
+    /* no-op: focus-based button navigation (focused_button + D-pad) drives menus.
+     * The vptr fields stay so ui_hit() / ui_pressed() still compile. */
+    (void)menus_active;
+    vclick = 0; vdown = 0; vptr_pad = -1; vptr_on = 0;
 }
-static int ui_pressed(void) { return IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || vclick; }
+static int ui_pressed(void) {
+    /* mouse/touch click OR gamepad A (latched at frame start in a_pressed) — either activates a button. */
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || vclick) return 1;
+    return a_pressed;
+}
 static int ui_down(void) { return IsMouseButtonDown(MOUSE_BUTTON_LEFT) || vdown; }
 
 /* ---- tiny immediate-mode button bar ---- */
 static int ui_hit(Rectangle r) {
-    Vector2 p = vptr_on ? vptr : mpos();
+    Vector2 p = mpos();
     if (GetTouchPointCount() > 0) p = tpos(0);
     return CheckCollisionPointRec(p, r);
 }
 static int button(Rectangle r, const char *label, int active) {
+    int id = button_count;
+    if (id < MAX_BUTTONS) button_rects[id] = r;
+    button_count++;
+    int is_focused = (id == focused_button);
     int hot = ui_hit(r);
-    Color bg = active ? (Color){70, 130, 200, 255} : hot ? (Color){80, 80, 90, 255} : (Color){50, 50, 58, 255};
-    DrawRectangleRec(r, bg); DrawRectangleLinesEx(r, 1, (Color){120, 120, 130, 255});
+    Color bg = active ? (Color){70, 130, 200, 255}
+             : is_focused ? (Color){110, 110, 130, 255}
+             : hot ? (Color){80, 80, 90, 255}
+             : (Color){50, 50, 58, 255};
+    DrawRectangleRec(r, bg);
+    /* focused button gets a thicker chrome-coloured border so D-pad nav is obvious */
+    DrawRectangleLinesEx(r, is_focused ? 3 : 1,
+                         is_focused ? (Color){200, 220, 255, 255} : (Color){120, 120, 130, 255});
     int fs = 24; int tw = ui_measure(label, fs);
     while (tw > r.width - 6 && fs > 10) { fs -= 2; tw = ui_measure(label, fs); }
     ui_text(label, r.x + (r.width - tw) / 2, r.y + (r.height - fs) / 2, fs, RAYWHITE);
-    return hot && ui_pressed();
+    return (hot && ui_pressed()) || (is_focused && a_pressed);
+}
+
+/* D-pad navigation: snap focus to the nearest button in the requested direction.
+ * Weight primary axis 3x the secondary so a button in a straight line beats one off-axis at equal primary distance. */
+static void nav_focus(int dx, int dy) {
+    if (button_count <= 1) return;
+    int cur = focused_button;
+    if (cur < 0 || cur >= button_count) cur = 0;
+    Rectangle cr = button_rects[cur];
+    float ccx = cr.x + cr.width / 2, ccy = cr.y + cr.height / 2;
+    int best = -1; float best_score = 1e30f;
+    for (int i = 0; i < button_count; i++) {
+        if (i == cur) continue;
+        Rectangle b = button_rects[i];
+        float bcx = b.x + b.width / 2, bcy = b.y + b.height / 2;
+        float ddx = bcx - ccx, ddy = bcy - ccy;
+        if (dx != 0 && ddx * dx <= 0) continue;
+        if (dy != 0 && ddy * dy <= 0) continue;
+        float primary = dx != 0 ? fabsf(ddx) : fabsf(ddy);
+        float secondary = dx != 0 ? fabsf(ddy) : fabsf(ddx);
+        float score = primary * 3.0f + secondary;
+        if (score < best_score) { best_score = score; best = i; }
+    }
+    if (best >= 0) focused_button = best;
 }
 static int held(Rectangle r) { return ui_hit(r) && ui_down(); }
 
@@ -324,18 +371,25 @@ int main(int argc, char **argv) {
     if (shot_file) { int f = swiv_find(&disk, shot_file); if (f >= 0) sp_file = f; }
     char status[256], palname[64] = "";
     while (!WindowShouldClose()) {
-        if (IsKeyPressed(KEY_F2)) TakeScreenshot("swivview.png");
 #ifdef __ANDROID__
         { static int hb = 0; if ((++hb % 100) == 1) TraceLog(LOG_INFO, "heartbeat frame %d mode %d screen %dx%d render %dx%d glerr %x fps %d ready %d", hb, mode, GetScreenWidth(), GetScreenHeight(), GetRenderWidth(), GetRenderHeight(), (unsigned)android_gl_error(), GetFPS(), IsWindowReady()); }
 #endif
         vptr_update(mode != 2 || game_paused);
-        if (vptr_pad >= 0 && IsGamepadButtonPressed(vptr_pad, GAMEPAD_BUTTON_MIDDLE_LEFT)) {   /* Select/Back */
-            if (mode == 2 && game_paused) { mode = 3; game_on = 0; game_paused = 0; fe_game = 0; fe_start_title(); }
-            else if (mode != 2 && mode != 3) mode = 3;
+        { int gp = real_pad(0);
+          a_pressed = (gp >= 0 && IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_RIGHT_FACE_DOWN));
+          if (gp >= 0 && IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_MIDDLE_LEFT)) {   /* Select/Back */
+              if (mode == 2 && game_paused) { mode = 3; game_on = 0; game_paused = 0; fe_game = 0; fe_start_title(); }
+              else if (mode != 2 && mode != 3) mode = 3;
+          }
+          if (mode == 2 && gp >= 0 && IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_MIDDLE_RIGHT)) game_paused ^= 1;   /* Start = pause */
         }
-        if (mode == 2 && vptr_pad >= 0 && IsGamepadButtonPressed(vptr_pad, GAMEPAD_BUTTON_MIDDLE_RIGHT)) game_paused ^= 1;   /* Start = pause */
+        button_count = 0;   /* clear for this frame's button() registrations */
+        /* focused_button persists across frames; clamp at end of frame if the layout shrunk */
         if (++frame_no == test_go && mode == 2) { g.game_over160 = 1; autofire = 0; }
-        audio_update(); audio_music_play(&disk, mode == 3 ? fe_music() : mode == 2 ? (opt.ingame_music ? "AMTITUNE.MOD" : fe_music()) : NULL);
+        audio_update(); audio_music_play(&disk,
+            (mode == 3 || mode == 4 || mode == 5 || mode == 6) ? fe_music()   /* title music also plays while browsing extras / debug / options */
+            : mode == 2 ? (opt.ingame_music ? "AMTITUNE.MOD" : fe_music())
+            : NULL);
         if (mode == 6) {
             memset(buf, 0, sizeof(Color) * VIEW_W * VIEW_H);
         } else if (mode == 5) {
@@ -351,6 +405,22 @@ int main(int argc, char **argv) {
             Vector2 mp = mpos(); if (GetTouchPointCount() > 0) mp = tpos(0);
             if ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
             fe_keys();
+            /* on-screen letter grid: while the hi-score entry screen is blinking, hit-test
+             * the vptr cursor against the A-Z / DEL / OK grid that frontend.c draws into the
+             * 320x256 canvas and forward the action. */
+            if (fe_hiscore_active()) {
+                int gx, gy, cw, ch;
+                fe_hiscore_letter_grid(&gx, &gy, &cw, &ch);
+                Rectangle gr = { (float)(gx * SCALE), (float)(gy * SCALE),
+                                 (float)(6 * cw * SCALE), (float)(6 * ch * SCALE) };
+                if (ui_hit(gr) && ui_pressed()) {
+                    int col = ((int)vptr.x / SCALE - gx) / cw;
+                    int row = ((int)vptr.y / SCALE - gy) / ch;
+                    int letter = fe_hiscore_letter_at(col, row);
+                    if (letter < 0) fe_hiscore_input(-letter, 0);
+                    else if (letter > 0) fe_hiscore_input(FE_INPUT_ADD, letter);
+                }
+            }
             int r = fe_update(start_heli, start_jeep ? 0x40 : 0);
             if (r == FE_START_GAME) {                 /* LAB_01B5: start the engine; the joining player is the one who pressed fire */
                 eng_init(&disk, 0); player_start(); eng_level = 0; map_lv = 0; game_on = 1; fe_game = 1; idle_vbl = 0;
@@ -504,9 +574,15 @@ int main(int argc, char **argv) {
         ClearBackground(BLACK);
         BeginTextureMode(canvas_rt);
         ClearBackground(BLACK);
-        DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, 0, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
-        int by = VIEW_H * SCALE;
-        DrawRectangle(0, by, WIN_W, BAR_H, (Color){28, 28, 34, 255});
+        /* in mode 2 (in-game) the score lives ABOVE the rendering map: reserve a HUD_TOP strip at the top
+         * and shift the game canvas down by that much, so the map never overlaps the score.  Other modes
+         * (title / menus) fill the full canvas. */
+        const int HUD_TOP = (mode == 2) ? 50 : 0;
+        if (HUD_TOP) DrawRectangle(0, 0, WIN_W, HUD_TOP, BLACK);
+        DrawTexturePro(tex, (Rectangle){0, 0, VIEW_W, VIEW_H}, (Rectangle){0, HUD_TOP, WIN_W, VIEW_H * SCALE}, (Vector2){0, 0}, 0, WHITE);
+        int by = HUD_TOP + VIEW_H * SCALE;
+        /* mode 2 (in-game) gets a single thin grey line for stats; other modes keep the full bar for buttons */
+        DrawRectangle(0, by, WIN_W, mode == 2 ? 22 : BAR_H, (Color){28, 28, 34, 255});
                 if (mode == 6) {
             int x0 = 40, y0 = 40, rh = 70; char l[64];
             ui_text("OPTIONS", x0, y0, 34, RAYWHITE);
@@ -526,9 +602,9 @@ int main(int argc, char **argv) {
             ui_text("Title music in game", x0, y0 + 150 + 3 * rh, 26, (Color){255, 238, 136, 255});
             if (button((Rectangle){x0 + 420, y0 + 140 + 3 * rh, 196, 48}, opt.ingame_music ? "ON" : "OFF", opt.ingame_music)) { opt.ingame_music ^= 1; }
             ui_text("Controls", x0, y0 + 220 + 3 * rh, 26, (Color){255, 238, 136, 255});
-            ui_text("Port 2 helicopter: arrows + Space (or first gamepad: stick/d-pad, A/X/trigger fire)", x0, y0 + 260 + 3 * rh, 22, LIGHTGRAY);
-            ui_text("Port 1 jeep: WASD + Left Shift/Ctrl (or second gamepad)", x0, y0 + 290 + 3 * rh, 22, LIGHTGRAY);
-            ui_text("P = pause, ESC (while paused) = menu; touch: left half steer, right half fire", x0, y0 + 320 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("Port 2 helicopter: first gamepad (stick/d-pad move, A/X/trigger fire, START = pause, SELECT = back)", x0, y0 + 260 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("Port 1 jeep: second gamepad (same layout)", x0, y0 + 290 + 3 * rh, 22, LIGHTGRAY);
+            ui_text("touch: left half steer, right half fire", x0, y0 + 320 + 3 * rh, 22, LIGHTGRAY);
             if (button((Rectangle){x0, y0 + 370 + 3 * rh, 170, 52}, "SAVE", 0)) options_save();
             if (button((Rectangle){x0 + 180, y0 + 370 + 3 * rh, 170, 52}, "TITLE", 0)) { options_save(); mode = 3; }
         }
@@ -561,7 +637,6 @@ int main(int argc, char **argv) {
                     if (button((Rectangle){WIN_W / 2 - 200, by3, 120, 48}, "<", 0)) { extra_idx = (extra_idx + extra_n - 1) % extra_n; extra_scroll = 0; }
                     ui_text(l, WIN_W / 2 - ui_measure(l, 24) / 2, by3 + 12, 24, RAYWHITE);
                     if (button((Rectangle){WIN_W / 2 + 80, by3, 120, 48}, ">", 0)) { extra_idx = (extra_idx + 1) % extra_n; extra_scroll = 0; }
-                    if (IsKeyPressed(KEY_RIGHT)) { extra_idx = (extra_idx + 1) % extra_n; extra_scroll = 0; } if (IsKeyPressed(KEY_LEFT)) { extra_idx = (extra_idx + extra_n - 1) % extra_n; extra_scroll = 0; }
                 }
             }
         }
@@ -603,37 +678,48 @@ int main(int argc, char **argv) {
         if (dev) ui_text(status, 8, by + 4, 16, RAYWHITE);
         float r1 = by + 26, r2 = by + 72, bh = 40;
         if (mode == 2) {
-            /* score panel in the bottom bar, game font (LAB_0593 status format): PLAYER 1 heli left, HI centre, PLAYER 2 jeep right */
+            /* in-game HUD: score strip sits ABOVE the rendering map (the canvas has been shifted down by 50 px),
+             * and the stats/difficulty line sits BELOW the map.  Reuse the strip texture from before. */
             #define SW 426                 /* strip width: drawn at 3x (1278 px) so left status, HI and right status fit */
             static uint8_t strip[SW * 7]; static Color simg[SW * 8]; static Texture2D stex, stex2; static int stex_ok = 0;
             if (!stex_ok) { Image im = { simg, SW, 8, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 }; stex = LoadTextureFromImage(im); stex2 = LoadTextureFromImage(im); stex_ok = 1; }
             static const Color GRAD[7] = { {136,136,221,255}, {170,170,238,255}, {204,204,255,255}, {204,204,255,255}, {204,204,255,255}, {170,170,238,255}, {136,136,221,255} };
-            char line[256], st[64];
-            int hi = g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score; if (g.jeep.score > hi) hi = g.jeep.score; if (g.jeep.hiscore80 > hi) hi = g.jeep.hiscore80;
-            FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0);
-            fe_status_line(st, sizeof st, 0, &h); snprintf(line, sizeof line, "_x008_a1%s_f", st);
-            fe_status_line(st, sizeof st, 1, &j); { char r2s[96]; snprintf(r2s, sizeof r2s, "_x418_a2%s_f", st); strncat(line, r2s, sizeof line - strlen(line) - 1); }
-            { char hs[64]; snprintf(hs, sizeof hs, "_x213_a0HI %06d0_f", hi % 1000000); strncat(line, hs, sizeof line - strlen(line) - 1); }
-            fe_text_strip(strip, SW, line);
-            for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? GRAD[y] : (Color){0, 0, 0, 0};
-            UpdateTexture(stex, simg);
-            DrawTexturePro(stex, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + 8, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
-            /* per-player shots / hits / accuracy under each score */
-            { char l2[96]; snprintf(line, sizeof line, "_x008_a1shots %d  hits %d  %d%%_f", g.stat_shots_p[0], g.stat_hits_p[0], g.stat_shots_p[0] ? g.stat_hits_p[0] * 100 / g.stat_shots_p[0] : 0);
-              snprintf(l2, sizeof l2, "_x418_a2shots %d  hits %d  %d%%_f", g.stat_shots_p[1], g.stat_hits_p[1], g.stat_shots_p[1] ? g.stat_hits_p[1] * 100 / g.stat_shots_p[1] : 0); strncat(line, l2, sizeof line - strlen(line) - 1); }
-            fe_text_strip(strip, SW, line);
-            for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? (Color){200, 200, 200, 255} : (Color){0, 0, 0, 0};
-            UpdateTexture(stex2, simg);
-            DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + BAR_H - 30, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);   /* stats at the foot of the bar, gap from the score line */
-            { static const char *DN[3] = { "EASY", "NORMAL", "HARD" }; const char *d = DN[eng_difficulty_mode < 0 ? 1 : eng_difficulty_mode > 2 ? 1 : eng_difficulty_mode]; ui_text(d, (WIN_W - ui_measure(d, 22)) / 2, by + BAR_H - 30, 22, LIGHTGRAY); }
-            if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "P to resume   ESC for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
+            /* score strip (HELI / JEEP / HI) in chrome-blue, centred vertically in the HUD_TOP region */
+            { char st[64], line[256];
+              int hi = g.heli.hiscore80 > g.heli.score ? g.heli.hiscore80 : g.heli.score; if (g.jeep.score > hi) hi = g.jeep.score; if (g.jeep.hiscore80 > hi) hi = g.jeep.hiscore80;
+              FeHud h = hud_of(&g.heli, 0), j = hud_of(&g.jeep, 0);
+              fe_status_line(st, sizeof st, 0, &h); snprintf(line, sizeof line, "_x008_a1%s_f", st);
+              fe_status_line(st, sizeof st, 1, &j); { char r2s[96]; snprintf(r2s, sizeof r2s, "_x418_a2%s_f", st); strncat(line, r2s, sizeof line - strlen(line) - 1); }
+              { char hs[64]; snprintf(hs, sizeof hs, "_x213_a0HI %06d0_f", hi % 1000000); strncat(line, hs, sizeof line - strlen(line) - 1); }
+              fe_text_strip(strip, SW, line);
+              for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? GRAD[y] : (Color){0, 0, 0, 0};
+              UpdateTexture(stex, simg);
+              DrawTexturePro(stex, (Rectangle){0, 0, SW, 8}, (Rectangle){1, 13, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
+            }
+            /* stats + difficulty line at the bottom — same chrome-blue game font as the score strip above */
+            { char line[256];
+              static const char *DN[3] = { "EASY", "NORMAL", "HARD" };
+              const char *d = DN[eng_difficulty_mode < 0 ? 1 : eng_difficulty_mode > 2 ? 1 : eng_difficulty_mode];
+              snprintf(line, sizeof line,
+                  "_x008_a1shots %d  hits %d  %d%%_n"
+                  "_x213_a0%s_n"
+                  "_x418_a2shots %d  hits %d  %d%%_f",
+                  g.stat_shots_p[0], g.stat_hits_p[0], g.stat_shots_p[0] ? g.stat_hits_p[0] * 100 / g.stat_shots_p[0] : 0,
+                  d,
+                  g.stat_shots_p[1], g.stat_hits_p[1], g.stat_shots_p[1] ? g.stat_hits_p[1] * 100 / g.stat_shots_p[1] : 0);
+              fe_text_strip(strip, SW, line);
+              for (int y = 0; y < 8; y++) for (int x = 0; x < SW; x++) simg[y * SW + x] = (y < 7 && strip[y * SW + x]) ? GRAD[y] : (Color){0, 0, 0, 0};
+              UpdateTexture(stex2, simg);
+              DrawTexturePro(stex2, (Rectangle){0, 0, SW, 8}, (Rectangle){1, by + 8, SW * 3, 24}, (Vector2){0, 0}, 0, WHITE);
+            }
+            if (game_paused) { const char *t = "PAUSED"; ui_text(t, (WIN_W - ui_measure(t, 48)) / 2, HUD_TOP + VIEW_H * SCALE / 2 - 40, 48, RAYWHITE); const char *u = "START to resume   SELECT for menu"; ui_text(u, (WIN_W - ui_measure(u, 24)) / 2, HUD_TOP + VIEW_H * SCALE / 2 + 20, 24, LIGHTGRAY); }
         }
         if (mode == 3) {
-            if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
+            if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) { debug_ui ^= 1; if (!debug_ui) debug_go_panel = 0; }
             if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
             if (button((Rectangle){WIN_W - 364, r1, 120, bh}, "QUIT", 0)) { CloseWindow(); return 0; }
             if (button((Rectangle){WIN_W - 500, r1, 128, bh}, "OPTIONS", 0)) { mode = 6; }
-            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        PORT 1 JEEP: WASD + Shift / pad 1 / tap left  --  PORT 2 HELICOPTER: arrows + Space / pad 0 / tap right  --  press fire to start, P pauses, ESC (paused) for menu  --  F1-F10 / F11: the game's own controls screen        ";
+            { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        PORT 1 JEEP: pad 1 / tap left  --  PORT 2 HELICOPTER: pad 0 / tap right  --  press A to start, START pauses, SELECT = back  --  A selects, D-pad / left stick moves the cursor        ";
               int lw = 0; if (rr_logo.id) { float lsc = (BAR_H - 16) / (float)rr_logo.height; lw = (int)(rr_logo.width * lsc) + 24; DrawTextureEx(rr_logo, (Vector2){8, by + 8}, 0, lsc, WHITE); }
               int fs = 26, w = ui_measure(msg, fs); mx -= 1.5f; if (mx < -w) mx += w;
               BeginScissorMode(lw, r2, WIN_W - lw, bh); ui_text(msg, lw + (int)mx, r2 + 10, fs, (Color){255, 238, 136, 255}); ui_text(msg, lw + (int)mx + w, r2 + 10, fs, (Color){255, 238, 136, 255}); EndScissorMode(); }
@@ -642,6 +728,25 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;
                 if (button((Rectangle){224, r1, 100, bh}, "SFX", 0)) mode = 4;
                 if (button((Rectangle){332, r1, 100, bh}, "PLAY", 0)) { mode = 2; game_on = 0; fe_game = 0; }
+                if (button((Rectangle){440, r1, 100, bh}, "GO", debug_go_panel)) debug_go_panel ^= 1;
+                if (debug_go_panel) {
+                    /* modal overlay over the canvas region (y < by), header + 10 buttons in 2 cols */
+                    DrawRectangle(0, 0, WIN_W, by, (Color){0, 0, 0, 200});
+                    int ox = 80, oy = 40, bw = 280, bh2 = 56, gap = 12;
+                    ui_text("GO TO SCREEN", ox, oy, 36, RAYWHITE);
+                    oy += 60;
+                    for (int i = 0; i < N_GO; i++) {
+                        int col = i % 2, row = i / 2;
+                        Rectangle r = { (float)(ox + col * (bw + gap)), (float)(oy + row * (bh2 + gap)), (float)bw, (float)bh2 };
+                        if (button(r, GO_LIST[i].label, 0)) {
+                            fe_debug_goto(GO_LIST[i].screen);
+                            debug_go_panel = 0;
+                            break;
+                        }
+                    }
+                    if (button((Rectangle){(float)(ox + (bw + gap)), (float)(oy + 5 * (bh2 + gap)), (float)bw, (float)bh2}, "CLOSE", 0))
+                        debug_go_panel = 0;
+                }
             }
         }
         if (mode != 3 && (dev || mode == 2)) {
@@ -653,8 +758,7 @@ int main(int argc, char **argv) {
             }
         }
         if (mode == 2) {
-            if (IsKeyPressed(KEY_P)) game_paused ^= 1;
-            if (game_paused && IsKeyPressed(KEY_ESCAPE)) { mode = 3; game_on = 0; game_paused = 0; fe_game = 0; fe_start_title(); }   /* paused + ESC = straight back to the title */
+            /* pause is the gamepad START button (MIDDLE_RIGHT) at line 336; back-to-title is SELECT (MIDDLE_LEFT) at lines 332-334. */
             if (dev) {
                 if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
                 if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
@@ -701,6 +805,18 @@ int main(int argc, char **argv) {
             if (button((Rectangle){640, r1, 70, bh}, sp_zoom == 1 ? "x1" : sp_zoom == 2 ? "x2" : "x4", 0)) sp_zoom = sp_zoom == 4 ? 1 : sp_zoom * 2;
         }
         if (vptr_on) { DrawCircleV(vptr, 14, (Color){0, 0, 0, 140}); DrawCircleV(vptr, 10, (Color){255, 238, 136, 255}); }
+        /* after all button() calls have registered this frame's rects, snap focus to the button nearest
+         * the pressed D-pad direction.  focused_button then drives rendering + activation next frame. */
+        { int gp = real_pad(0);
+          if (gp >= 0) {
+              if (IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_LEFT_FACE_UP))    nav_focus( 0, -1);
+              if (IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_LEFT_FACE_DOWN))  nav_focus( 0,  1);
+              if (IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_LEFT_FACE_LEFT))  nav_focus(-1,  0);
+              if (IsGamepadButtonPressed(gp, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) nav_focus( 1,  0);
+          }
+        }
+        if (focused_button >= button_count) focused_button = button_count > 0 ? button_count - 1 : 0;
+        /* vptr cursor hidden — focus highlight on the active button is the only indicator */
         EndTextureMode();
         /* own 50 Hz pacing (SetTargetFPS is not honoured on every backend, e.g. raylib/Android without vsync) */
         { static double next_t = 0; double now = GetTime(); if (next_t == 0) next_t = now; if (now < next_t) { WaitTime(next_t - now); now = GetTime(); } next_t += 1.0 / 50.0; if (now > next_t + 0.1) next_t = now; }

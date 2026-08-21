@@ -143,6 +143,14 @@ static int options_sel12324 = -1;   /* 12324(A6) */
  * drives it without a visit to the options screen (the keyboard sets always work, see viewer.c). */
 static int control_type[2] = { 1, 0 };
 static int in_options;
+/* on-screen letter grid for hi-score name entry.  The cursor blink loop owns the state;
+ * fe_hiscore_input() is the only outside mutator while hiscore_grid_active is 1. */
+static int  hiscore_grid_active;
+static char hiscore_entry_name[32];
+static int  hiscore_entry_len;
+static int  hiscore_entry_done;
+static char *hiscore_entry_target;   /* pointer into the live hs[p][rank].name buffer the blink loop edits */
+static int  hiscore_grid_col, hiscore_grid_row;
 static int pressed_key(void) { if (!keyn) return 0; int k = keyq[0]; memmove(keyq, keyq + 1, (--keyn) * sizeof keyq[0]); return k; }
 
 /* ---------------------------------------------------------------- coroutine plumbing ---- */
@@ -152,12 +160,9 @@ static void yield1(void) { coro_yield(); }
 /* LAB_055A (player task, every VBL): fire + credits -> the player joins (55(A4)), latched;
  * LAB_023D: the screens test that flag (bit0 of 12353) and the options request (bit2). */
 static void player_task(void) {
-    int k = 0;
-    for (int i = 0; i < keyn; ) {                                             /* LAB_01DD: F1..F10 -> 0..9, HELP -> 10 */
-        if ((keyq[i] >= FE_KEY_F1 && keyq[i] <= FE_KEY_F1 + 9) || keyq[i] == FE_KEY_HELP) { options_sel12324 = keyq[i] == FE_KEY_HELP ? 10 : keyq[i] - FE_KEY_F1; k = 1; memmove(keyq + i, keyq + i + 1, (--keyn - i) * sizeof keyq[0]); }
-        else i++;
-    }
-    if (k && play_state == 0 && !in_options) flag_options = 1;
+    /* F1..F10 / HELP -> open the controls screen was a keyboard-only shortcut; the device
+     * build reaches screen_controls() through fe_request_options() (called from the OPTIONS
+     * button in viewer.c).  The remaining trigger is just fire -> join. */
     if ((in_fire || in_fire2) && !please_wait158 && credits170 != 0 && play_state == 0) flag_start = 1;
 }
 static int check_start(void) { return flag_start || flag_options; }
@@ -390,6 +395,7 @@ static void screen_hiscore(int p) {
 }
 static int hs_qualifies(int p, long score) { return score > hs[p][6].score; }       /* LAB_028F (strictly greater than the lowest) */
 /* LAB_028D: insert, show the table, prompt, name entry (LAB_0299).  Keyboard from fe_key(). */
+static void hiscore_grid_render(int blink_phase);
 static void screen_hiscore_entry(int p, long score) {
     hs_tables_init();
     extern int fe_stat_shots(int p), fe_stat_hits(int p), fe_difficulty(void);
@@ -400,25 +406,70 @@ static void screen_hiscore_entry(int p, long score) {
     hs_table_draw(p);
     print("_x160_y208_c15_a0"); print(p ? "JEEP " : "HELI "); print("player please enter your name_n");   /* LAB_0291 */
     skip160 = 0; fade_in();
-    /* LAB_0299: cursor blink 25 VBLs on/off, 80 blinks max (then accepted), Return/Esc end, Backspace deletes */
-    char *name = hs[p][rank].name; int len = 0, x = 0x10, y = 0x50 + rank * 16, done = 0;
+    /* LAB_0299: cursor blink 25 VBLs on/off, 80 blinks max (then accepted), Return ends, no keyboard Backspace/Esc.
+     * The on-screen A-Z grid (hiscore_grid_render) replaces the keyboard DEL/ESC; ASCII typing from
+     * a paired keyboard still appends letters. */
+    char *name = hs[p][rank].name; int len = 0, x = 0x10, y = 0x50 + rank * 16;
+    hiscore_entry_name[0] = 0; hiscore_entry_len = 0;
+    hiscore_entry_done = 0; hiscore_entry_target = name;
+    hiscore_grid_col = 0; hiscore_grid_row = 0;
+    hiscore_grid_active = 1;
+    int done = 0;
     for (int blink = 0; blink < 80 && !done; blink++) {
         for (int phase = 0; phase < 2 && !done; phase++) {
             /* redraw the name + cursor (LAB_02A3/LAB_02A7/LAB_02A9): "\" is the full-block glyph */
             for (int k = 0; k < 2; k++) { text_at(x, y); text_align(1); tcol = 15; print(name); print(phase == 0 && k == 1 ? "\\ _f" : "  _f"); }
+            hiscore_grid_render(blink & 1);
             for (int t = 0; t < 25; t++) {
+                /* honour the joypad OK / DEL signals first */
+                if (hiscore_entry_done) { done = 1; break; }
                 int key = pressed_key();
-                if (key == FE_KEY_RETURN || key == FE_KEY_ESC || key == '\n') { done = 1; break; }
-                if (key == FE_KEY_BACKSPACE) { if (len) name[--len] = 0; break; }
-                if (key >= ' ' && key < 0x7f) { if (key >= 'a' && key <= 'z') key -= 0x20; if (key <= 'Z' && len < 31) { name[len++] = (char)key; name[len] = 0; } break; }
+                if (key == FE_KEY_RETURN || key == '\n') { done = 1; break; }
+                if (key >= ' ' && key < 0x7f) { if (key >= 'a' && key <= 'z') key -= 0x20; if (key <= 'Z' && len < 31) { name[len++] = (char)key; name[len] = 0; hiscore_entry_len = len; memcpy(hiscore_entry_name, name, (size_t)(len + 1)); } break; }
                 yield1();
             }
         }
     }
+    hiscore_grid_active = 0;
     if (!len) snprintf(name, 32, "%s", p ? "Lazy Jeep" : "Lazy Heli");               /* LAB_0293: default name */
     hs_save();
     text_at(x, y); text_align(1); print(name); print("   _f");
     print("_x160_y208_a0_c15"); print("                                                      _n");   /* blank the prompt */
+}
+
+/* 6 columns x 6 rows grid: rows 0..4 are A-Z (5*6 = 30 letters, A..Z+4 dropped), row 5 col 4 = DEL, col 5 = OK.
+ * Drawn into the same 320x256 screen[] buffer the rest of the attract screens use, so it sits under the
+ * 320x256 canvas the viewer composites; no separate UI surface needed. */
+static const int HIS_GRID_X = 148, HIS_GRID_Y = 208, HIS_GRID_CW = 4, HIS_GRID_CH = 6;
+static const char HIS_DEL_LABEL[4] = { 'D', 'E', 'L', 0 };
+static const char HIS_OK_LABEL[3] = { 'O', 'K', 0 };
+static void hiscore_grid_render(int blink_phase) {
+    /* A..Z across 5 rows.  Row r col c -> 'A' + r*6 + c.  Cells beyond 'Z' are left blank. */
+    for (int r = 0; r < 5; r++) for (int c = 0; c < 6; c++) {
+        int ch = 'A' + r * 6 + c;
+        if (ch > 'Z') continue;
+        small_char(ch, HIS_GRID_X + c * HIS_GRID_CW, HIS_GRID_Y + r * HIS_GRID_CH);
+    }
+    /* row 5: DEL at col 4, OK at col 5 */
+    small_char(HIS_DEL_LABEL[0], HIS_GRID_X + 4 * HIS_GRID_CW, HIS_GRID_Y + 5 * HIS_GRID_CH);
+    small_char(HIS_DEL_LABEL[1], HIS_GRID_X + 4 * HIS_GRID_CW + 4, HIS_GRID_Y + 5 * HIS_GRID_CH);
+    small_char(HIS_DEL_LABEL[2], HIS_GRID_X + 4 * HIS_GRID_CW + 8, HIS_GRID_Y + 5 * HIS_GRID_CH);
+    small_char(HIS_OK_LABEL[0], HIS_GRID_X + 5 * HIS_GRID_CW, HIS_GRID_Y + 5 * HIS_GRID_CH);
+    small_char(HIS_OK_LABEL[1], HIS_GRID_X + 5 * HIS_GRID_CW + 4, HIS_GRID_Y + 5 * HIS_GRID_CH);
+    /* highlight the selected cell with a 1-px border in colour 15, only on the first phase of the blink
+     * (so it pulses like the cursor above).  The border sits one pixel outside the 4x6 cell so it doesn't
+     * overwrite the glyphs in the centre of the cell. */
+    if (blink_phase == 0) {
+        int x0 = HIS_GRID_X + hiscore_grid_col * HIS_GRID_CW - 1;
+        int y0 = HIS_GRID_Y + hiscore_grid_row * HIS_GRID_CH - 1;
+        int x1 = x0 + HIS_GRID_CW + 1, y1 = y0 + HIS_GRID_CH + 1;
+        for (int xx = x0; xx <= x1; xx++) {
+            if (xx >= 0 && xx < W) { screen[y0 * W + xx] = 15; screen[y1 * W + xx] = 15; }
+        }
+        for (int yy = y0; yy <= y1; yy++) {
+            if (yy >= 0 && yy < H) { screen[yy * W + x0] = 15; screen[yy * W + x1] = 15; }
+        }
+    }
 }
 
 /* ---- LAB_01EB @ $20df16: credits (faces.raw) */
@@ -581,7 +632,8 @@ void fe_start_title(void) {
 void fe_debug_goto(const char *screen) { debug_screen = screen; fe_start_title(); }
 int fe_update(int fire_pressed, int joy_bits) {
     in_fire = fire_pressed || (joy_bits & 0x20); in_fire2 = (joy_bits >> 6) & 1; in_joy = joy_bits;
-    { int k; while (keyn && (keyq[0] == FE_KEY_ESC)) { k = pressed_key(); (void)k; skip160 = 1; if (play_state == 2) req_gameover = 1; } }
+    /* ESC used to skip the attract loop and abort play; the device build reaches the title from
+     * the gamepad's SELECT button (viewer.c sets mode = 3 and calls fe_start_title()). */
     if (!co) fe_start_title();
     vbl++; fade_tick(); player_task();
     if (play_state == 0) typers_tick();
@@ -593,3 +645,36 @@ void fe_level_intro(int level) { req_intro = level; }
 void fe_game_over(const FeStats *s) { stats = *s; stats.completed = 0; req_gameover = 1; }
 void fe_game_completed(void) { req_completed = 1; }
 void fe_key(int ch) { if (keyn < 16) keyq[keyn++] = ch; }
+
+/* ---------- hi-score on-screen letter grid (joypad typing) ---------- */
+int fe_hiscore_active(void) { return hiscore_grid_active; }
+void fe_hiscore_letter_grid(int *x, int *y, int *cell_w, int *cell_h) {
+    *x = HIS_GRID_X; *y = HIS_GRID_Y; *cell_w = HIS_GRID_CW; *cell_h = HIS_GRID_CH;
+}
+int fe_hiscore_letter_at(int col, int row) {
+    if (row >= 0 && row < 5 && col >= 0 && col < 6) {
+        int ch = 'A' + row * 6 + col;
+        return ch <= 'Z' ? ch : 0;
+    }
+    if (row == 5 && col == 4) return -FE_INPUT_DEL;
+    if (row == 5 && col == 5) return -FE_INPUT_OK;
+    return 0;
+}
+void fe_hiscore_input(int action, int ch) {
+    if (!hiscore_grid_active) return;
+    if (action == FE_INPUT_OK) { hiscore_entry_done = 1; return; }
+    if (action == FE_INPUT_DEL) {
+        if (hiscore_entry_len > 0) {
+            hiscore_entry_name[--hiscore_entry_len] = 0;
+            if (hiscore_entry_target) { hiscore_entry_target[hiscore_entry_len] = 0; }
+        }
+        return;
+    }
+    if (action == FE_INPUT_ADD) {
+        if (ch >= 'A' && ch <= 'Z' && hiscore_entry_len < 31) {
+            hiscore_entry_name[hiscore_entry_len++] = (char)ch;
+            hiscore_entry_name[hiscore_entry_len] = 0;
+            if (hiscore_entry_target) { memcpy(hiscore_entry_target, hiscore_entry_name, (size_t)(hiscore_entry_len + 1)); }
+        }
+    }
+}
