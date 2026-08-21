@@ -39,6 +39,8 @@ static void ui_text(const char *t, int x, int y, int fs, Color c) { if (ui_font_
 static int ui_measure(const char *t, int fs) { return ui_font_ok ? (int)MeasureTextEx(ui_font, t, (float)fs, 1).x : MeasureText(t, fs); }
 static SwivMap map; static SwivCanvas canvas; static int map_lv = -1, show_ground = 1, show_air = 0;
 static int game_on = 0; static int game_paused = 0; static int eng_level = 0; static int debug_ui = 0; static int debug_go_panel = 0; static int pending_join_heli = 1, pending_join_jeep = 0;
+static int options_return_mode = 3;   /* where the OPTIONS panel returns to: 3 = title, 2 = gameplay */
+static int play_heli, play_jeep;   /* title-bar buttons: HELI/JEEP/2P latch a player join, consumed by fe_update() */
 static double scroll_pos; static float speed = 0.25f; static int paused = 1;
 static Texture2D tex; static Image img;
 static int mode = 3;              /* 0 map, 1 sprites, 2 play, 3 title, 4 sfx, 5 extras, 6 options */
@@ -401,7 +403,7 @@ int main(int argc, char **argv) {
         } else if (mode == 3) {
             /* FRONT END: LAB_00B2 attract loop in src/frontend.c.  Port 2 = helicopter (arrows/space/pad 0/tap right),
              * port 1 = jeep (WASD/shift/pad 1/tap left); either fire starts, the other can join any time. */
-            int start_heli = fire_held_heli() || autofire, start_jeep = fire_held_jeep();
+            int start_heli = fire_held_heli() || autofire || play_heli, start_jeep = fire_held_jeep() || play_jeep;
             Vector2 mp = mpos(); if (GetTouchPointCount() > 0) mp = tpos(0);
             if ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) && mp.y < VIEW_H * SCALE) { if (mp.x < WIN_W / 2) start_jeep = 1; else start_heli = 1; }
             fe_keys();
@@ -437,6 +439,7 @@ int main(int argc, char **argv) {
                 /* a second player may still join during the intro */
                 if (!g.heli.joined55 && start_heli && fe_join_allowed()) { g.heli.joined55 = 1; fe_player_joined(0); }
                 if (!g.jeep.joined55 && start_jeep && fe_join_allowed()) { g.jeep.joined55 = 1; fe_player_joined(1); }
+                play_heli = play_jeep = 0;   /* engine accepted the join(s) — clear so a stray tap doesn't keep re-joining */
             } else if (r == FE_PLAY && fe_game) {
                 mode = 2; game_paused = 0;
             } else {
@@ -606,7 +609,7 @@ int main(int argc, char **argv) {
             ui_text("Port 1 jeep: second gamepad (same layout)", x0, y0 + 290 + 3 * rh, 22, LIGHTGRAY);
             ui_text("touch: left half steer, right half fire", x0, y0 + 320 + 3 * rh, 22, LIGHTGRAY);
             if (button((Rectangle){x0, y0 + 370 + 3 * rh, 170, 52}, "SAVE", 0)) options_save();
-            if (button((Rectangle){x0 + 180, y0 + 370 + 3 * rh, 170, 52}, "TITLE", 0)) { options_save(); mode = 3; }
+            if (button((Rectangle){x0 + 180, y0 + 370 + 3 * rh, 170, 52}, "BACK", 0)) { options_save(); mode = options_return_mode; }
         }
         static float extra_scroll = 0;
         if (mode == 5) {
@@ -718,7 +721,10 @@ int main(int argc, char **argv) {
             if (button((Rectangle){WIN_W - 108, r1, 100, bh}, "DEBUG", debug_ui)) { debug_ui ^= 1; if (!debug_ui) debug_go_panel = 0; }
             if (button((Rectangle){WIN_W - 236, r1, 120, bh}, "EXTRAS", 0)) { mode = 5; }
             if (button((Rectangle){WIN_W - 364, r1, 120, bh}, "QUIT", 0)) { CloseWindow(); return 0; }
-            if (button((Rectangle){WIN_W - 500, r1, 128, bh}, "OPTIONS", 0)) { mode = 6; }
+            if (button((Rectangle){WIN_W - 500, r1, 128, bh}, "OPTIONS", 0)) { options_return_mode = 3; mode = 6; }
+            if (button((Rectangle){WIN_W - 628, r1, 96, bh}, "HELI", 0)) play_heli = 1;
+            if (button((Rectangle){WIN_W - 724, r1, 96, bh}, "JEEP", 0)) play_jeep = 1;
+            if (button((Rectangle){WIN_W - 820, r1, 96, bh}, "2P", 0)) { play_heli = 1; play_jeep = 1; }
             { static float mx = 0; const char *msg = "In 2026 Retro Recomps brings you SWIV Amiga, fully native.  Enjoy this all-in-one package.  See you in the next one.        PORT 1 JEEP: pad 1 / tap left  --  PORT 2 HELICOPTER: pad 0 / tap right  --  press A to start, START pauses, SELECT = back  --  A selects, D-pad / left stick moves the cursor        ";
               int lw = 0; if (rr_logo.id) { float lsc = (BAR_H - 16) / (float)rr_logo.height; lw = (int)(rr_logo.width * lsc) + 24; DrawTextureEx(rr_logo, (Vector2){8, by + 8}, 0, lsc, WHITE); }
               int fs = 26, w = ui_measure(msg, fs); mx -= 1.5f; if (mx < -w) mx += w;
@@ -727,8 +733,7 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){8, r1, 100, bh}, "MAP", 0)) mode = 0;
                 if (button((Rectangle){116, r1, 100, bh}, "SPRITES", 0)) mode = 1;
                 if (button((Rectangle){224, r1, 100, bh}, "SFX", 0)) mode = 4;
-                if (button((Rectangle){332, r1, 100, bh}, "PLAY", 0)) { mode = 2; game_on = 0; fe_game = 0; }
-                if (button((Rectangle){440, r1, 100, bh}, "GO", debug_go_panel)) debug_go_panel ^= 1;
+                if (button((Rectangle){332, r1, 100, bh}, "GO", debug_go_panel)) debug_go_panel ^= 1;
                 if (debug_go_panel) {
                     /* modal overlay over the canvas region (y < by), header + 10 buttons in 2 cols */
                     DrawRectangle(0, 0, WIN_W, by, (Color){0, 0, 0, 200});
@@ -763,6 +768,7 @@ int main(int argc, char **argv) {
                 if (button((Rectangle){8, r1, 100, bh}, game_paused ? "RESUME" : "PAUSE", game_paused)) game_paused ^= 1;
                 if (button((Rectangle){116, r1, 100, bh}, "DEBUG", debug_ui)) debug_ui ^= 1;
                 if (button((Rectangle){224, r1, 100, bh}, "QUIT", 0)) { mode = 3; game_on = 0; if (fe_game) { fe_game = 0; fe_start_title(); } }
+            if (button((Rectangle){332, r1, 120, bh}, "OPTIONS", 0)) { options_return_mode = 2; mode = 6; }
                 for (int k = 0; k < 7; k++) {
                     char l[4]; snprintf(l, 4, "%d", k + 1);
                     if (button((Rectangle){120 + k * 52, r2, 48, bh}, l, eng_level == k)) { map_lv = k; eng_init(&disk, k); player_start(); eng_level = k; }
