@@ -1,6 +1,0 @@
-/home/jon/SWIV-Native/android/app/src/main/cpp/CMakeLists.txt
-/home/jon/libxmp-src/CMakeLists.txt
-/home/jon/libxmp-src/docs/CMakeLists.txt
-/home/jon/libxmp-src/examples/CMakeLists.txt
-/home/jon/raylib-5.5-src/CMakeLists.txt
-/home/jon/raylib-5.5-src/src/CMakeLists.txt
